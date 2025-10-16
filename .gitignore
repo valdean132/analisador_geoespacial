@@ -1,0 +1,5 @@
+.venv
+temp
+verificar_viabilidade.xlsx
+*.kmz
+resultados/*.xlsx
