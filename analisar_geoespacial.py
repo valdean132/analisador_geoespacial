@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 __name = "Analisador de Viabilidade Geoespacial"
 __author = "Valdean P. Souza & Gilmar Batista"
-__version = "1.3.0"
+__version = "2.3.0"
 __license = "CC BY-ND"
 
 import pandas as pd
@@ -10,8 +10,11 @@ from shapely.geometry import Point
 import zipfile
 import os
 import fiona
-import time
 import uuid
+
+import time
+import subprocess # Para abrir o Arquivo ao finalizar (Isso pode mudar)
+
 
 #  -- Gerando UUID para não repetir arquivo análisado
 id_unico = uuid.uuid4()
@@ -31,7 +34,7 @@ COLUNA_VELOCIDADE = 'VELOCIDADE'
 COLUNA_NOME_MANCHA = 'Name'
 
 # --- Configurações Geo ---
-RAIO_PROXIMIDADE_METROS = .5 * 1000
+RAIO_PROXIMIDADE_METROS = .5 * 1000 # Verificar para setar esse valor via linha de comando
 CRS_GEOGRAFICO = "EPSG:4326"  # WGS84, padrão para lat/lon (KML/GPS)
 CRS_PROJETADO = "EPSG:5880"   # SIRGAS 2000 / Brazil Polyconic, para cálculos em metros
 
@@ -39,13 +42,6 @@ CRS_PROJETADO = "EPSG:5880"   # SIRGAS 2000 / Brazil Polyconic, para cálculos e
 def print_header(name, author, version, license):
     """
     Imprime um cabeçalho estilizado e profissional no console.
-    
-    Args:
-        name (str): nome do programa.
-        author (str): nome do Autor.
-        version (str): Versão do Script
-        license (str): Licença do Script
-
     """
     box_width = 80
     title = name
@@ -73,13 +69,7 @@ def print_header(name, author, version, license):
     print(top_bottom_border + "\n")
 
 def extrair_todos_poligonos_do_kmz(arquivo_kmz):
-    """ 
-    Extrai os arquivos KMZ's para KML's na pasta TEMP caso ainda na esteja extraido
-    Depois retorna os poligonos encontrados de cada arquivo extraido para KML
-    
-    Args:
-        arquivo_kmz (str): caminho do arquivo KMZ encontrado.
-    """
+    # (Esta função não precisa de alterações)
     basename = os.path.basename(arquivo_kmz).split('.')[0]
     temp_dir = os.path.join(PASTA_DOS_KMZ, "temp", basename)
     os.makedirs(temp_dir, exist_ok=True)
@@ -300,6 +290,11 @@ def analisar_viabilidade_otimizado():
         df_final.to_excel(ARQUIVO_EXCEL_SAIDA, index=False, engine='openpyxl')
         
         print(f"\n✅ Concluído! O resultado foi salvo em '{ARQUIVO_EXCEL_SAIDA}'.")
+        print(f"📂 Abrindo arquivo salvo")
+        
+        subprocess.run(f"start {ARQUIVO_EXCEL_SAIDA}", shell=True)
+        
+        
     except Exception as e:
         print(f"\n❌ ERRO ao salvar '{ARQUIVO_EXCEL_SAIDA}': {e}")
 

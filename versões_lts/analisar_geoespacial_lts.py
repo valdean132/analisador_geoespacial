@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 __name = "Analisador de Viabilidade Geoespacial"
 __author = "Valdean P. Souza & Gilmar Batista"
-__version = "1.2.0"
+__version = "2.3.0"
 __license = "CC BY-ND"
 
 import pandas as pd
