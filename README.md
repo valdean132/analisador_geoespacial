@@ -42,7 +42,7 @@ analisador_geoespacial/
 │   └── ...
 ├── resultados/                 # Pasta onde os relatórios serão salvos.
 ├── app_gui.py                  # A aplicação com interface gráfica (GUI).
-├── analisar_viabilidade.py     # O script original para execução via linha de comando.
+├── analisar_geoespacial.py     # O script original para execução via linha de comando.
 ├── Analizador GeoEspacial.bat  # Lançador com menu para Windows.
 ├── requirements.txt            # Lista de dependências do projeto.
 └── verificar_viabilidade.xlsx  # Planilha de exemplo com os pontos a serem analisados.
@@ -53,7 +53,7 @@ analisador_geoespacial/
 ### Para a Aplicação com Interface Gráfica (`app_gui.py`)
 Toda a configuração, como a seleção da pasta KMZ, do arquivo Excel e a definição do raio de proximidade, é feita **diretamente na interface do programa**. Não é necessário editar o código.
 
-### Para a Versão de Linha de Comando (`analisar_viabilidade.py`)
+### Para a Versão de Linha de Comando (`analisar_geoespacial.py`)
 As configurações de arquivos e nomes de colunas são definidas como constantes no início do script. Você pode editá-las diretamente no arquivo, se necessário:
 - `PASTA_DOS_KMZ`: Nome da pasta que contém os arquivos `.kmz`.
 - `ARQUIVO_EXCEL_PONTOS`: Nome da planilha de entrada.
@@ -84,7 +84,7 @@ Este é o método mais simples e não requer o uso do terminal.
 1.  Dê um duplo-clique no arquivo `Analizador GeoEspacial.bat`.
 2.  Um menu aparecerá na tela de comando.
 3.  Digite `1` e pressione `Enter` para abrir a **aplicação com interface gráfica**.
-4.  Digite `2` e pressione `Enter` para executar a **análise via linha de comando** (usará os arquivos configurados no script `analisar_viabilidade.py`).
+4.  Digite `2` e pressione `Enter` para executar a **análise via linha de comando** (usará os arquivos configurados no script `analisar_geoespacial.py`).
 
 ### Método 2: Executando a Interface Gráfica Diretamente
 Se você não quiser usar o `.bat`, pode iniciar a interface gráfica diretamente.
@@ -99,11 +99,11 @@ Se você não quiser usar o `.bat`, pode iniciar a interface gráfica diretament
 ### Método 3: Executando via Linha de Comando (Avançado)
 Este método é útil para automação ou se você prefere usar o terminal.
 
-1.  Certifique-se de que os arquivos de entrada (`verificar_viabilidade.xlsx` e os `.kmz`) estão nas pastas corretas e configurados dentro do script `analisar_viabilidade.py`.
+1.  Certifique-se de que os arquivos de entrada (`verificar_viabilidade.xlsx` e os `.kmz`) estão nas pastas corretas e configurados dentro do script `analisar_geoespacial.py`.
 2.  Abra um terminal e ative o ambiente virtual.
 3.  Execute o seguinte comando:
     ```bash
-    python analisar_viabilidade.py
+    python analisar_geoespacial.py
     ```
 4.  Aguarde o processamento. O progresso será exibido no terminal e o arquivo de resultado será salvo na pasta `resultados`.
 
