@@ -3,80 +3,109 @@
 ## Autores
 
 - [Valdean P. Souza](https://www.github.com/valdean132)
-- [Gilmar Batista]()
+- Gilmar Batista
 
 ## Versão e licença
-- *Versão: 1.2.0*
-- *Licença: [CC BY-ND](https://creativecommons.org/licenses/by-nd/4.0/)*
+- *Versão: 3.0.0*
+- *Licença: [CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/)*
 
 ## 1. Visão Geral
 
-Este script automatiza a análise de viabilidade de uma lista de pontos geográficos (coordenadas) em relação a um conjunto de áreas de cobertura (polígonos) fornecidas em arquivos KMZ.
+Este projeto automatiza a análise de viabilidade de uma lista de pontos geográficos (coordenadas) em relação a um conjunto de áreas de cobertura (polígonos) fornecidas em arquivos KMZ.
 
 O objetivo principal é determinar, para cada ponto, se ele está:
 - **Dentro** de uma ou mais áreas de cobertura.
 - **Próximo** a uma área de cobertura (dentro de um raio configurável).
-- **Inválável** (fora de qualquer área e do raio de proximidade).
+- **Inviável** (fora de qualquer área e do raio de proximidade).
 - Possui uma **Coordenada Inválida** (dados ausentes, nulos, 0 ou mal formatados).
+
+O projeto oferece duas formas de uso: uma **interface gráfica moderna (GUI)** para facilidade de uso e um **script de linha de comando** para automação e processamento em lote.
 
 ## 2. Principais Funcionalidades
 
 - **Múltiplos Arquivos KMZ**: Processa e consolida polígonos de múltiplos arquivos `.kmz` de uma só vez.
 - **Validação de Dados**: Valida rigorosamente as coordenadas de entrada, tratando células vazias, valores zero e formatos incorretos.
 - **Hierarquia de Coordenadas**: Procura primeiro por colunas `LATITUDE`/`LONGITUDE` e, se não as encontrar, procura por uma coluna `COORDENADAS` (formato "lat, lon").
-- **Agregação de Resultados**: Se um ponto for encontrado dentro ou próximo de múltiplas áreas, o script consolida os resultados em uma única linha, listando todas as manchas encontradas e evitando a duplicação de dados.
-- **Cálculo de Proximidade**: Utiliza projeção cartográfica adequada para o Brasil (SIRGAS 2000) para calcular distâncias em metros com alta precisão.
+- **Agregação de Resultados**: Se um ponto for encontrado dentro ou próximo de múltiplas áreas, o script consolida os resultados em uma única linha, listando todas as manchas encontradas.
+- **Cálculo de Proximidade Preciso**: Utiliza projeção cartográfica adequada para o Brasil (SIRGAS 2000) para calcular distâncias em metros.
 - **Relatório Detalhado**: Gera um arquivo Excel de saída com os dados originais enriquecidos com o status da viabilidade, o nome da(s) mancha(s) e a distância.
-- **Saída com ID Único**: Salva cada relatório com um identificador único para evitar a sobreescrita de análises anteriores.
 
 ## 3. Estrutura de Arquivos e Pastas
 
-Para que o script funcione corretamente, a seguinte estrutura de diretórios e arquivos deve ser respeitada:
+Para que o projeto funcione corretamente, a seguinte estrutura deve ser respeitada:
 
 ```
-seu_projeto/
-├── kmzs/                  # Pasta para colocar todos os arquivos .kmz
+analisador_geoespacial/
+├── .venv/                      # Pasta do ambiente virtual Python.
+├── kmzs/                       # Pasta para colocar todos os arquivos .kmz de análise.
 │   ├── area_cobertura_A.kmz
-│   └── area_cobertura_B.kmz
-├── resultados/            # Pasta onde os relatórios serão salvos (deve ser criada)
-├── verificar_viabilidade.xlsx  # Planilha com os pontos a serem analisados
-└── analisar_viabilidade.py     # Este script
+│   └── ...
+├── resultados/                 # Pasta onde os relatórios serão salvos.
+├── app_gui.py                  # A aplicação com interface gráfica (GUI).
+├── analisar_viabilidade.py     # O script original para execução via linha de comando.
+├── Analizador GeoEspacial.bat  # Lançador com menu para Windows.
+├── requirements.txt            # Lista de dependências do projeto.
+└── verificar_viabilidade.xlsx  # Planilha de exemplo com os pontos a serem analisados.
 ```
 
-## 4. Configuração do Script
+## 4. Configuração
 
-Todas as configurações são feitas no início do arquivo `analisar_viabilidade.py`.
+### Para a Aplicação com Interface Gráfica (`app_gui.py`)
+Toda a configuração, como a seleção da pasta KMZ, do arquivo Excel e a definição do raio de proximidade, é feita **diretamente na interface do programa**. Não é necessário editar o código.
 
-- `PASTA_DOS_KMZ`: Nome da pasta que contém os arquivos `.kmz`. (Padrão: `'kmzs'`)
-- `ARQUIVO_EXCEL_PONTOS`: Nome da planilha de entrada. (Padrão: `'verificar_viabilidade.xlsx'`)
-- `ARQUIVO_EXCEL_SAIDA`: Define o padrão de nome para o arquivo de saída. Já configurado para gerar um nome único.
-- `COLUNA_LATITUDE`, `COLUNA_LONGITUDE`, `COLUNA_COORDENADAS`: Nomes exatos das colunas na sua planilha Excel.
-- `COLUNA_VELOCIDADE`: Nome da coluna de velocidade (usada para diferenciar 'Viabilidade Expressa' de 'Verificar PTP').
-- `COLUNA_NOME_MANCHA`: Nome da coluna dentro do arquivo KMZ que identifica cada polígono (geralmente `'Name'`).
+### Para a Versão de Linha de Comando (`analisar_viabilidade.py`)
+As configurações de arquivos e nomes de colunas são definidas como constantes no início do script. Você pode editá-las diretamente no arquivo, se necessário:
+- `PASTA_DOS_KMZ`: Nome da pasta que contém os arquivos `.kmz`.
+- `ARQUIVO_EXCEL_PONTOS`: Nome da planilha de entrada.
 - `RAIO_PROXIMIDADE_METROS`: Distância em metros para considerar um ponto como "próximo".
 
 ## 5. Instalação de Dependências
 
-Antes de executar, você precisa instalar as bibliotecas Python necessárias. Um arquivo `requirements.txt` é fornecido. Para instalar, execute o seguinte comando no seu terminal:
+Antes de executar, você precisa instalar as bibliotecas Python necessárias.
 
-```bash
-pip install -r requirements.txt
-```
-
-**Nota:** A instalação de bibliotecas geoespaciais como o `geopandas` pode ser complexa. O uso de um ambiente virtual (como `venv`) é fortemente recomendado. Em alguns sistemas, pode ser mais fácil instalar usando `conda`.
+1.  **Crie e ative um ambiente virtual** (altamente recomendado):
+    ```bash
+    python -m venv .venv
+    # No Windows, ative com:
+    .venv\Scripts\activate
+    ```
+2.  **Instale as dependências** a partir do arquivo `requirements.txt`:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 ## 6. Como Executar
 
-1.  Certifique-se de que a estrutura de pastas está correta e os arquivos de entrada estão nos locais certos.
-2.  Abra um terminal ou prompt de comando no diretório do projeto.
-3.  Execute o script com o seguinte comando:
+Existem três maneiras de executar a ferramenta, da mais fácil à mais avançada.
 
-```bash
-python analisar_viabilidade.py
-```
+### Método 1: Usando o Lançador `Analizador GeoEspacial.bat` (Recomendado para Windows)
+Este é o método mais simples e não requer o uso do terminal.
 
-4.  Aguarde o processamento. O script exibirá o progresso no terminal.
-5.  Ao final, o arquivo de resultado será salvo na pasta `resultados`.
+1.  Dê um duplo-clique no arquivo `Analizador GeoEspacial.bat`.
+2.  Um menu aparecerá na tela de comando.
+3.  Digite `1` e pressione `Enter` para abrir a **aplicação com interface gráfica**.
+4.  Digite `2` e pressione `Enter` para executar a **análise via linha de comando** (usará os arquivos configurados no script `analisar_viabilidade.py`).
+
+### Método 2: Executando a Interface Gráfica Diretamente
+Se você não quiser usar o `.bat`, pode iniciar a interface gráfica diretamente.
+
+1.  Abra um terminal (CMD, PowerShell, etc.) e ative o ambiente virtual (`.venv\Scripts\activate`).
+2.  Execute o seguinte comando:
+    ```bash
+    python app_gui.py
+    ```
+3.  A janela da aplicação será aberta.
+
+### Método 3: Executando via Linha de Comando (Avançado)
+Este método é útil para automação ou se você prefere usar o terminal.
+
+1.  Certifique-se de que os arquivos de entrada (`verificar_viabilidade.xlsx` e os `.kmz`) estão nas pastas corretas e configurados dentro do script `analisar_viabilidade.py`.
+2.  Abra um terminal e ative o ambiente virtual.
+3.  Execute o seguinte comando:
+    ```bash
+    python analisar_viabilidade.py
+    ```
+4.  Aguarde o processamento. O progresso será exibido no terminal e o arquivo de resultado será salvo na pasta `resultados`.
 
 ## 7. Entendendo o Arquivo de Saída
 

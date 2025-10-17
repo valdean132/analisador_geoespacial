@@ -3,3 +3,5 @@ geopandas
 openpyxl
 Fiona
 Shapely
+customtkinter
+pillow
