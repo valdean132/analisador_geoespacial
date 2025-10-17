@@ -1,0 +1,113 @@
+import asyncio
+import json
+import os
+import shutil
+import uuid
+from typing import Dict
+
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel
+
+from .core.analysis import GeoAnalyzer
+
+# --- Configuração da Aplicação ---
+app = FastAPI(
+    title="Analisador de Viabilidade Geoespacial API",
+    description="API para análise de viabilidade de pontos geoespaciais contra manchas de cobertura KMZ.",
+    version="1.3.0"
+)
+
+# --- Pastas de Trabalho ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+RESULTS_DIR = os.path.join(BASE_DIR, "results")
+KMZ_DIR = os.path.join(os.path.dirname(BASE_DIR), "kmzs") # Assumindo que a pasta kmzs está no nível raiz do projeto
+
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+# Armazenamento em memória para rastrear os resultados
+analysis_results: Dict[str, str] = {}
+
+# @app.get("/doc/")
+
+@app.post("/analyze/")
+async def analyze_viability(
+    raio_km: float = Form(0.0),
+    file: UploadFile = File(...)
+):
+    """
+    Inicia uma análise de viabilidade.
+    - **raio_km**: Raio de proximidade em quilômetros.
+    - **file**: Arquivo .xlsx com os pontos para análise.
+    
+    Retorna um stream de Server-Sent Events (SSE) com o progresso.
+    O último evento conterá o resumo e o ID para download do resultado.
+    """
+    
+    # Salva o arquivo enviado temporariamente
+    file_id = str(uuid.uuid4())
+    upload_path = os.path.join(UPLOADS_DIR, f"{file_id}_{file.filename}")
+    with open(upload_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    async def event_stream_generator():
+        analyzer = GeoAnalyzer(
+            pasta_kmz=KMZ_DIR,
+            arquivo_excel_path=upload_path,
+            raio_km=raio_km
+        )
+        
+        df_final, resumo = None, None
+        
+        # O gerador da classe de análise produz o progresso
+        for progress, message in analyzer.run_analysis():
+            if progress == -1: # Flag de erro
+                error_event = {"status": "error", "message": message}
+                yield f"data: {json.dumps(error_event)}\n\n"
+                return
+
+            event_data = {"progress": progress, "message": message}
+            yield f"data: {json.dumps(event_data)}\n\n"
+            await asyncio.sleep(0.1) # Pequeno delay para a UI respirar
+
+            # Acessa o resultado final quando o gerador termina
+            df_final, resumo = analyzer.run_analysis().__closure__[0].cell_contents
+
+        if df_final is not None:
+            # Salva o arquivo de resultado final
+            result_id = str(uuid.uuid4())
+            result_path = os.path.join(RESULTS_DIR, f"resultado_{result_id}.xlsx")
+            df_final.to_excel(result_path, index=False, engine='openpyxl')
+            analysis_results[result_id] = result_path
+            
+            # Envia o evento final com o resumo e o ID de download
+            final_event = {
+                "status": "complete",
+                "summary": resumo,
+                "result_id": result_id
+            }
+            yield f"data: {json.dumps(final_event)}\n\n"
+        
+        # Limpa o arquivo de upload
+        os.remove(upload_path)
+
+    return StreamingResponse(event_stream_generator(), media_type="text/event-stream")
+
+
+@app.get("/download/{result_id}")
+async def download_result(result_id: str):
+    """
+    Baixa o arquivo Excel de resultado da análise.
+    - **result_id**: O ID retornado pelo endpoint /analyze/ no evento final.
+    """
+    file_path = analysis_results.get(result_id)
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Resultado não encontrado ou expirado.")
+    
+    return FileResponse(
+        path=file_path,
+        filename=os.path.basename(file_path),
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
