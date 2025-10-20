@@ -3,4 +3,6 @@ temp
 verificar_viabilidade.xlsx
 *.kmz
 resultados/*.xlsx
+API/results/*.xlsx
+API/uploads/*.xlsx
 *.pyc

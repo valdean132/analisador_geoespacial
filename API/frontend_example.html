@@ -18,6 +18,11 @@
         <input type="file" id="file" name="file" required><br><br>
         <label for="raio">Raio de Proximidade (km):</label>
         <input type="number" id="raio" name="raio_km" step="0.1" value="0.5"><br><br>
+        <label for="coordenadas">Colunas de coordenadas (Ex.: latitude, longitude ou coordenadas):</label>
+        <input type="text" id="coordenadas" name="coordenadas" value="LATITUDE, LONGITUDE"><br><br>
+        <label for="col_velocidade">Colunas de velocidade (em Mbps):</label>
+        <input type="text" id="col_velocidade" name="col_velocidade" value=""><br><br>
+
         <button type="submit">Iniciar Análise</button>
     </form>
 
@@ -28,6 +33,7 @@
         <h3>Resumo da Análise</h3>
         <pre id="summary-content"></pre>
         <a id="download-link" href="#" target="_blank">Baixar Relatório</a>
+        <a id="delete-link" href="#" target="_blank">Deletar Relatório</a>
     </div>
 
     <script>
@@ -36,6 +42,7 @@
         const logsContainer = document.getElementById('logs');
         const summaryContainer = document.getElementById('summary');
         const downloadLink = document.getElementById('download-link');
+        const deleteLink = document.getElementById('delete-link');
         const summaryContent = document.getElementById('summary-content');
         const submitButton = form.querySelector('button');
 
@@ -56,7 +63,7 @@
             try {
                 // --- A SOLUÇÃO ESTÁ AQUI ---
                 // 1. Usamos fetch para enviar como POST, com o FormData no corpo
-                const response = await fetch('/analyze/', {
+                const response = await fetch('http://127.0.0.1:8000/analyze/', {
                     method: 'POST',
                     body: formData,
                 });
@@ -118,7 +125,8 @@
                 progressBar.textContent = '100%';
 
                 summaryContent.textContent = JSON.stringify(data.summary, null, 2);
-                downloadLink.href = `/download/${data.result_id}`;
+                downloadLink.href = `http://127.0.0.1:8000/download/${data.result_id}`;
+                deleteLink.href = `http://127.0.0.1:8000/delete/${data.result_id}`;
                 summaryContainer.style.display = 'block';
 
             } else {

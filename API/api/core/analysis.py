@@ -7,20 +7,34 @@ import fiona
 import time
 
 class GeoAnalyzer:
-    def __init__(self, pasta_kmz: str, arquivo_excel_path: str, raio_km: float):
+    def __init__(self, pasta_kmz: str, arquivo_excel_path: str, raio_km: float, coluna_coordenadas: str, coluna_velocidade):
         self.pasta_kmz = pasta_kmz
         self.arquivo_excel_path = arquivo_excel_path
         self.raio_km = raio_km
         self.RAIO_PROXIMIDADE_METROS = float(raio_km) * 1000
+
+        # --- ATRIBUTOS DE RESULTADO ---
+        self.df_final = None
+        self.resumo = None
         
         # Constantes
+        separa_coordenadas = coluna_coordenadas.split(',', 2)
         self.CRS_GEOGRAFICO = "EPSG:4326"
         self.CRS_PROJETADO = "EPSG:5880"
         self.COLUNA_LATITUDE = 'LATITUDE'
         self.COLUNA_LONGITUDE = 'LONGITUDE'
         self.COLUNA_COORDENADAS = 'COORDENADAS'
-        self.COLUNA_VELOCIDADE = 'VELOCIDADE'
+        
+        if len(separa_coordenadas) == 2:
+            self.COLUNA_LATITUDE = separa_coordenadas[0].strip()
+            self.COLUNA_LONGITUDE = separa_coordenadas[1].strip()
+        else:
+            self.COLUNA_COORDENADAS = coluna_coordenadas
+            
+        
+        self.COLUNA_VELOCIDADE = coluna_velocidade
         self.COLUNA_NOME_MANCHA = 'Name'
+
 
     def run_analysis(self):
         """
@@ -50,7 +64,8 @@ class GeoAnalyzer:
             if self.COLUNA_NOME_MANCHA not in gdf_manchas_global.columns:
                 gdf_manchas_global[self.COLUNA_NOME_MANCHA] = 'Nome não encontrado'
             else:
-                gdf_manchas_global[self.COLUNA_NOME_MANCHA].fillna('Nome não encontrado', inplace=True)
+                # gdf_manchas_global[self.COLUNA_NOME_MANCHA].fillna('Nome não encontrado', inplace=True)
+                gdf_manchas_global[self.COLUNA_NOME_MANCHA] = gdf_manchas_global[self.COLUNA_NOME_MANCHA].fillna('Nome não encontrado')
             
             # --- Etapa 2 & 3: Carregar e processar pontos ---
             yield 35, "Lendo e validando arquivo de pontos..."
@@ -105,24 +120,102 @@ class GeoAnalyzer:
             
             resumo = df_final['Status Viabilidade'].value_counts().to_dict()
             
+            # Antes:
+            # yield 100, "Análise Concluída!"
+            # return df_final, resumo
+        
+            # Agora fica assim:
+
+            # Salva os resultados nos atributos da instância
+            self.df_final = df_final
+            self.resumo = resumo
+
             yield 100, "Análise Concluída!"
-            return df_final, resumo
 
         except Exception as e:
             # Em caso de erro, produz uma mensagem de erro
             yield -1, str(e)
-            return None, None
+            # return None, None
 
     # --- Métodos Auxiliares da Classe ---
     def _extrair_poligonos(self, arquivo_kmz):
-        # (A lógica da sua função `extrair_todos_poligonos_do_kmz` vai aqui)
-        # ...
-        pass # Implementação omitida por brevidade, cole a sua aqui
+        basename = os.path.basename(arquivo_kmz).split('.')[0]
+        temp_dir = os.path.join(self.pasta_kmz, "temp", basename)
+        os.makedirs(temp_dir, exist_ok=True)
+        caminho_kml = next((os.path.join(temp_dir, f) for f in os.listdir(temp_dir) if f.lower().endswith('.kml')), None)
+        if not caminho_kml:
+            try:
+                with zipfile.ZipFile(arquivo_kmz, 'r') as kmz:
+                    kml_filename = next((f for f in kmz.namelist() if f.lower().endswith('.kml')), None)
+                    if not kml_filename: return None
+                    print(f"⚠️  Extraindo: '{os.path.basename(arquivo_kmz)}'")
+                    caminho_kml = kmz.extract(kml_filename, path=temp_dir)
+            except Exception as e:
+                print(f"❌ Erro ao extrair '{arquivo_kmz}': {e}")
+                return None
+        try:
+            with fiona.Env():
+                camadas = fiona.listlayers(caminho_kml)
+            lista_de_gdfs = []
+            for camada in camadas:
+                try:
+                    gdf_camada = gpd.read_file(caminho_kml, driver='KML', layer=camada)
+                    gdf_camada = gdf_camada[gdf_camada.geometry.type.isin(['Polygon', 'MultiPolygon']) & gdf_camada.geometry.is_valid]
+                    if not gdf_camada.empty:
+                        lista_de_gdfs.append(gdf_camada)
+                except Exception:
+                    continue
+            if not lista_de_gdfs: return None
+            return gpd.GeoDataFrame(pd.concat(lista_de_gdfs, ignore_index=True), crs=self.CRS_GEOGRAFICO)
+        except Exception as e:
+            print(f"❌ Erro ao ler KML '{caminho_kml}': {e}")
+            return None
     
     def _criar_ponto(self, row, mode):
-        # (A lógica da sua função `criar_ponto` vai aqui)
-        # ...
-        pass # Implementação omitida por brevidade, cole a sua aqui
+        """
+        Cria um objeto Point a partir de uma linha do DataFrame, com validação rigorosa.
+        Retorna None se os dados forem inválidos (vazios, 0 ou mal formatados).
+        
+        Args:
+            row (pd.Series): A linha do DataFrame.
+            mode (str): O modo de operação ('latlon' ou 'coords').
+        """
+        if mode == 'latlon':
+            try:
+                # Pega os valores
+                lon = row[self.COLUNA_LONGITUDE]
+                lat = row[self.COLUNA_LATITUDE]
+                
+                # VALIDAÇÃO: Verifica se são nulos ou 0
+                if pd.isna(lon) or pd.isna(lat) or lon == 0 or lat == 0:
+                    return None
+                
+                # Converte para float e cria o ponto
+                return Point(float(lon), float(lat))
+            except (ValueError, TypeError):
+                return None # Retorna None se a conversão para float falhar
+
+        elif mode == 'coords':
+            try:
+                # Pega o valor
+                coords_str = row[self.COLUNA_COORDENADAS]
+                
+                # VALIDAÇÃO: Verifica se é nulo, 0 ou uma string '0'
+                if pd.isna(coords_str) or coords_str == 0 or str(coords_str).strip() == '0':
+                    return None
+                
+                # Processa a string de coordenadas
+                coords = str(coords_str).replace(" ", "").split(',')
+                if len(coords) == 2:
+                    lat, lon = map(float, coords)
+                    # VALIDAÇÃO extra para o caso de "0,0" na string
+                    if lat == 0 or lon == 0:
+                        return None
+                    return Point(lon, lat)
+            except (ValueError, TypeError, IndexError):
+                return None # Retorna None se o formato for inválido
+        
+        return None
 
     def _validar_colunas_pontos(self, df):
         if self.COLUNA_LATITUDE in df.columns and self.COLUNA_LONGITUDE in df.columns:
