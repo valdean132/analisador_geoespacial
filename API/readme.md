@@ -11,6 +11,7 @@ A API foi construída com **FastAPI**, garantindo alta performance, processament
 - **Endpoint de Análise Assíncrono**: Inicia a análise e retorna um stream de atualizações de progresso em tempo real usando Server-Sent Events (SSE).
 - **Feedback em Tempo Real**: Permite que o cliente (frontend) exiba logs de processo e uma barra de progresso que é atualizada à medida que a análise avança.
 - **Endpoint de Download**: Fornece um endpoint seguro para baixar o arquivo Excel com os resultados após a conclusão da análise.
+- **Endpoint de Delete**: Fornece um endpoint seguro para deletar o arquivo Excel com base no id gerado após a conclusão da análise.
 - **Arquitetura Orientada a Objetos**: A lógica de negócio é encapsulada em uma classe `GeoAnalyzer`, promovendo um código limpo, modular e reutilizável.
 - **Documentação Automática**: Gera automaticamente uma documentação interativa da API (Swagger UI e ReDoc).
 
@@ -25,13 +26,14 @@ analisador_geo_api/
 │   │   └── analysis.py      # A classe GeoAnalyzer com toda a lógica da análise.
 │   ├── schemas/
 │   │   └── models.py        # Modelos de dados Pydantic para validação e serialização.
-│   ├── main.py              # Arquivo principal da API (endpoints, configuração).
-│   ├── uploads/             # Diretório temporário para arquivos .xlsx enviados.
-│   └── results/             # Diretório para armazenar os relatórios .xlsx gerados.
+│   └── main.py              # Arquivo principal da API (endpoints, configuração).
 │
 ├── kmzs/                    # Pasta onde os arquivos .kmz de cobertura devem ser colocados.
 │   ├── mancha_A.kmz
 │   └── mancha_B.kmz
+|
+├── results/             # Diretório para armazenar os relatórios .xlsx gerados (Criado automaticamente).
+├── uploads/             # Diretório temporário para arquivos .xlsx enviados (Criado automaticamente).
 │
 ├── frontend_example.html    # Um cliente web simples para testar a API.
 ├── requirements.txt         # Lista de dependências Python.
@@ -91,6 +93,8 @@ Inicia um processo de análise. Este endpoint recebe os dados como `multipart/fo
 
 - **Parâmetros**:
   - `raio_km` (float, *form-data*): O raio de proximidade em quilômetros. Padrão é `0.0`.
+  - `coordenadas` (str, *form-data*): Coluna de coordenadas a serem analisados. Padrão é `LATITUDE, LONGITUDE` ou `COORDENADAS`.
+  - `col_velocidade` (str, *form-data*): Coluna com as coordenadas em `MBPS` para analise. Pdrão é `VELOCIDADE`. Caso coluna não seja encontrada `VELOCIDADE` é difinido como `0`.
   - `file` (file, *form-data*): O arquivo `.xlsx` contendo a lista de pontos a serem analisados.
 
 - **Resposta**:
@@ -132,6 +136,33 @@ Baixa o arquivo Excel com o resultado completo da análise.
   - `404 Not Found`: Se o `result_id` for inválido ou o arquivo não existir mais.
 
 ---
+---
+
+### `GET /delete/{result_id}`
+
+Delete o arquivo Excel com o resultado completo da análise.
+
+- **Parâmetros**:
+  - `result_id` (string, *path*): O ID único retornado no evento final do endpoint `/analyze/`.
+
+- **Fluxo de Eventos (SSE)**:
+  - **Evento de Erro**:
+    ```json
+    {
+      "status": "error", 
+      "summary": "Arquivo não encontrado ou já foi removido...", 
+      "result_id": "a1b2c3d4-e5f6-..."
+    }
+    ```
+  - **Evento Final de Sucesso**:
+    ```json
+    {
+      "status": "success",
+      "summary": "Arquivo removido com sucesso.",
+      "result_id": "a1b2c3d4-e5f6-..."
+    }
+
+---
 
 ## 6. Documentação Interativa (Swagger UI)
 
@@ -148,6 +179,6 @@ O arquivo `frontend_example.html` é uma página web autônoma que consome a API
 
 1.  Certifique-se de que o servidor da API está rodando.
 2.  Abra o arquivo `frontend_example.html` diretamente em um navegador web (ex: Chrome, Firefox).
-3.  Use a interface para selecionar um arquivo `.xlsx` e definir o raio.
+3.  Use a interface para selecionar um arquivo `.xlsx`, definir o raio, definir coluna de coordenadas e coluna de velocidades.
 4.  Clique em "Iniciar Análise" para ver o progresso, os logs e o resumo serem preenchidos em tempo real.
 5.  Após a conclusão, um link para download do relatório aparecerá.
