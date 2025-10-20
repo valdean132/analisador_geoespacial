@@ -158,7 +158,7 @@ async def delete_result(result_id: str):
             # Envia o evento final com o resumo e o ID de download
             result_delete = {
                 "status": "error",
-                "summary": 'Arquivo não encontrado ou já foi removido.',
+                "message": 'Arquivo não encontrado ou já foi removido.',
                 "result_id": result_id
             }
             yield f"data: {json.dumps(result_delete)}\n\n"
@@ -168,7 +168,7 @@ async def delete_result(result_id: str):
             # Envia o evento final com o resumo e o ID de download
             result_delete = {
                 "status": "success",
-                "summary": 'Arquivo removido com sucesso.',
+                "message": 'Arquivo removido com sucesso.',
                 "result_id": result_id
             }
             yield f"data: {json.dumps(result_delete)}\n\n"

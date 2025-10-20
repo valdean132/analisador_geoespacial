@@ -136,7 +136,6 @@ Baixa o arquivo Excel com o resultado completo da análise.
   - `404 Not Found`: Se o `result_id` for inválido ou o arquivo não existir mais.
 
 ---
----
 
 ### `GET /delete/{result_id}`
 
@@ -150,7 +149,7 @@ Delete o arquivo Excel com o resultado completo da análise.
     ```json
     {
       "status": "error", 
-      "summary": "Arquivo não encontrado ou já foi removido...", 
+      "message": "Arquivo não encontrado ou já foi removido...", 
       "result_id": "a1b2c3d4-e5f6-..."
     }
     ```
@@ -158,7 +157,7 @@ Delete o arquivo Excel com o resultado completo da análise.
     ```json
     {
       "status": "success",
-      "summary": "Arquivo removido com sucesso.",
+      "message": "Arquivo removido com sucesso.",
       "result_id": "a1b2c3d4-e5f6-..."
     }
 
