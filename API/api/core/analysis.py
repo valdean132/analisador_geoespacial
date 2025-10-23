@@ -115,7 +115,11 @@ class GeoAnalyzer:
             df_final = df_pontos.merge(resultados_geo, left_index=True, right_index=True, how="left")
             df_final.loc[invalidos_mask, 'Status Viabilidade'] = 'Coordenada Inválida'
             df_final.fillna({'Status Viabilidade': 'Inviável'}, inplace=True)
-            df_final[['Mancha', 'Nome da Mancha']] = df_final[['Mancha', 'Nome da Mancha']].fillna('---')
+            
+            # df_final[['Mancha', 'Nome da Mancha']] = df_final[['Mancha', 'Nome da Mancha']].fillna('---')
+            # Preenche 'NaN's nas colunas de Mancha, mesmo que elas não existam
+            df_final.fillna({'Mancha': '---', 'Nome da Mancha': '---'}, inplace=True)
+            
             df_final = df_final.drop(columns=['geometry'], errors='ignore')
             
             resumo = df_final['Status Viabilidade'].value_counts().to_dict()
