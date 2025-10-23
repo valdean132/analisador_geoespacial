@@ -46,6 +46,7 @@ class GeoAnalyzer:
             yield 5, "Carregando arquivos KMZ..."
             arquivos_kmz = [os.path.join(self.pasta_kmz, f) for f in os.listdir(self.pasta_kmz) if f.lower().endswith('.kmz')]
             if not arquivos_kmz:
+                os.remove(self.arquivo_excel_path)
                 raise ValueError(f"Nenhum arquivo .kmz encontrado em '{self.pasta_kmz}'")
 
             lista_poligonos_gdfs = []
@@ -58,6 +59,7 @@ class GeoAnalyzer:
                 yield 10 + int(20 * (i + 1) / len(arquivos_kmz)), f"Processando KMZ {i + 1}/{len(arquivos_kmz)}"
 
             if not lista_poligonos_gdfs:
+                os.remove(self.arquivo_excel_path)
                 raise ValueError("Nenhum polígono válido foi carregado dos arquivos KMZ.")
             
             gdf_manchas_global = gpd.GeoDataFrame(pd.concat(lista_poligonos_gdfs, ignore_index=True), crs=self.CRS_GEOGRAFICO)
@@ -227,6 +229,7 @@ class GeoAnalyzer:
         elif self.COLUNA_COORDENADAS in df.columns:
             return 'coords'
         else:
+            os.remove(self.arquivo_excel_path)
             raise ValueError(f"Nenhuma coluna de coordenada encontrada.")
     
     def _aggregate_results(self, df_bruto, mode, gdf_pontos):

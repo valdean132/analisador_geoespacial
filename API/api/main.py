@@ -17,7 +17,7 @@ from .core.analysis import GeoAnalyzer
 app = FastAPI(
     title="Analisador de Viabilidade Geoespacial API",
     description="API para análise de viabilidade de pontos geoespaciais contra manchas de cobertura KMZ.",
-    version="2.3.1"
+    version="2.3.2"
 )
 
 # --- 2. Adicione o Middleware de CORS ---
