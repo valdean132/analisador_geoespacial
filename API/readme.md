@@ -74,12 +74,14 @@ Com as dependências instaladas, você pode iniciar o servidor da API.
 
 2.  Execute o servidor Uvicorn:
     ```bash
-    uvicorn api.main:app --reload
+    uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
     ```
     - `api.main:app`: Indica ao Uvicorn para encontrar o objeto `app` dentro do arquivo `api/main.py`.
+    - `--host 0.0.0.0`: Indica em que host irá rodar, ex.: `http://127.0.0.1`, ideal para diferentes interfaces de saída.
+    - `--port 8000`: Indica a porta que irá rodar, ex.: `http://127.0.0.1:8000`, ideal para setar diferentes portas.
     - `--reload`: Reinicia o servidor automaticamente sempre que você fizer alterações no código, ideal para desenvolvimento.
 
-3.  O servidor estará rodando em `http://127.0.0.1:8000`.
+3.  O servidor estará rodando em `http://127.0.0.1:8000` como padrão caso `--host 0.0.0.0` e `--port 8000` não sejam setados.
 
 ## 5. Endpoints da API
 
