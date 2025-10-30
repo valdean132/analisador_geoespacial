@@ -1,59 +1,95 @@
+# api/main.py
+
 import asyncio
 import json
 import os
 import shutil
 import uuid
 from typing import Dict
+from contextlib import asynccontextmanager  # <-- 1. Importar
+import glob  # <-- 1. Importar
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-# --- 1. Importe o CORSMiddleware ---
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from .core.analysis import GeoAnalyzer
 
-# --- Configuração da Aplicação ---
-app = FastAPI(
-    title="Analisador de Viabilidade Geoespacial API",
-    description="API para análise de viabilidade de pontos geoespaciais contra manchas de cobertura KMZ.",
-    version="2.3.2"
-)
-
-# --- 2. Adicione o Middleware de CORS ---
-# Esta é a parte mais importante. Ela deve vir logo após a criação do app.
-
-# Define quais "origens" (bairros) podem acessar sua API.
-# Usar ["*"] permite qualquer origem, o que é ótimo para desenvolvimento.
-origins = [
-    "*", 
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,  # Permite as origens definidas acima
-    allow_credentials=True, # Permite cookies (não usamos, mas é boa prática)
-    allow_methods=["GET", "POST"],    # Permite todos os métodos (GET, POST, etc)
-    allow_headers=["*"],    # Permite todos os cabeçalhos
-)
-
-# --- Pastas de Trabalho ---
-# O diretório do arquivo main.py (ex: C:\..._geoespacial\API\api)
+# ==============================================================================
+# --- Definição das Pastas de Trabalho ---
+# ==============================================================================
 API_DIR = os.path.dirname(os.path.abspath(__file__))
-# O diretório raiz do projeto (ex: C:\..._geoespacial\API)
 PROJECT_ROOT = os.path.dirname(API_DIR)
 
-# Agora, todos os caminhos são construídos a partir da raiz do projeto
 UPLOADS_DIR = os.path.join(PROJECT_ROOT, "uploads")
 RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
 KMZ_DIR = os.path.join(PROJECT_ROOT, "kmzs")
 
-# Garante que as pastas necessárias existam
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
-# Armazenamento em memória para rastrear os resultados
+# 2. Definir o dicionário que será populado no startup
 analysis_results: Dict[str, str] = {}
+
+# ==============================================================================
+# --- 3. Função de Ciclo de Vida (Lifespan) ---
+# ==============================================================================
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- CÓDIGO A SER EXECUTADO ANTES DO SERVIDOR INICIAR ---
+    print("Servidor iniciando... Populando cache de resultados existentes...")
+    
+    # Define o padrão de busca (ex: C:\..._geoespacial\API\results\resultado_*.xlsx)
+    pattern = os.path.join(RESULTS_DIR, "resultado_*.xlsx")
+    
+    count = 0
+    # Usa glob para encontrar todos os arquivos que correspondem ao padrão
+    for full_path in glob.glob(pattern):
+        try:
+            filename = os.path.basename(full_path)
+            
+            # Extrai o result_id do nome do arquivo
+            # "resultado_" tem 10 caracteres, ".xlsx" tem 5
+            result_id = filename[10:-5]
+            
+            # Adiciona ao dicionário em memória
+            analysis_results[result_id] = full_path
+            count += 1
+        except Exception as e:
+            print(f"Erro ao carregar o resultado '{filename}' no cache: {e}")
+            
+    print(f"Cache populado com {count} resultados anteriores.")
+    
+    # O 'yield' é o ponto onde a aplicação FastAPI fica "rodando"
+    yield
+    
+    # --- CÓDIGO A SER EXECUTADO QUANDO O SERVIDOR DESLIGAR (opcional) ---
+    print("Servidor desligando...")
+
+
+# ==============================================================================
+# --- 4. Configuração da Aplicação ---
+# ==============================================================================
+app = FastAPI(
+    title="Analisador de Viabilidade Geoespacial API",
+    description="API para análise de viabilidade...",
+    version="2.4.0",
+    lifespan=lifespan  # <-- 4. Informa ao FastAPI para usar nossa função
+)
+
+# --- Configuração de CORS ---
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# --- Endpoints da API ---
 
 @app.post("/analyze/")
 async def analyze_viability(
