@@ -32,13 +32,13 @@ echo ----------------------------------------------------
 echo.
 echo A API estara acessivel em:
 echo  - Localmente: http://127.0.0.1:8000
-echo  - Na rede:    http://172.16.207.86:8000 (ex: 172.16.207.86:8000)
+echo  - Na rede:    http://%IP_DA_SUA_MAQUINA%:8000 (ex: 172.16.207.86:8000)
 echo.
 echo Pressione CTRL+C nesta janela para parar o servidor.
 echo.
 
 REM Inicia o servidor Uvicorn escutando em todas as interfaces de rede
-uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn api.main:app --host 0.0.0.0 --port 8000
 
 :eof
 echo Servidor finalizado.
