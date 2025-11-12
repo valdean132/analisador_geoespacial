@@ -1,0 +1,22 @@
+*** Nova Lógica para busca de Massivas ***
+
+Criar 2 Botões:
+  - Busca na Mancha GPON
+  - busca cidades atendidas
+  - Busca na Mancha GPON e Busca cidades atendidas
+
+
+Para os 2 habilitados:
+  Busca primeiro na mancha GPON;
+  Se não encontrar
+  Buscar no raio de aproximado e nas cidades atendidadas
+  Se não tiver raio
+  Buscar nas cidades atendidas
+  Se não estiver dentro do raio
+  Buscar nas cidades atendidas
+
+  Retornar nessa ordem
+
+  Status GPON,	Mancha GPON,	Distância GPON (mts),	Status PTP	REDE PTP
+
+Para busca nas cidades atendidas, as precisa ter as colunas de Cidade e UF
