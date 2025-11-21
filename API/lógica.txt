@@ -17,6 +17,6 @@ Para os 2 habilitados:
 
   Retornar nessa ordem
 
-  Status GPON,	Mancha GPON,	Distância GPON (mts),	Status PTP	REDE PTP
+  Status,	Mancha GPON,	Dist. GPON (mts),	REDE PTP
 
 Para busca nas cidades atendidas, as precisa ter as colunas de Cidade e UF

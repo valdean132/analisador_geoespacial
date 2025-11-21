@@ -1,19 +1,21 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dev IA - Analisador Geo v7.0</title>
-    
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    
+
     <style>
         /* Inspirado na imagem: fundo cinza claro, componentes brancos */
-        body { 
-            background-color: #f9fafb; /* Um cinza ainda mais claro */
+        body {
+            background-color: #f9fafb;
+            /* Um cinza ainda mais claro */
         }
-        
+
         /* Container para os 'Toasts' (notificações) */
         .toast-container {
             position: fixed;
@@ -31,27 +33,32 @@
 
         /* Estilo dos Cards (Inspirado na imagem) */
         .card {
-            border: none; /* Remove a borda padrão */
-            border-radius: 1rem; /* Cantos bem arredondados */
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04); /* Sombra sutil */
+            border: none;
+            /* Remove a borda padrão */
+            border-radius: 1rem;
+            /* Cantos bem arredondados */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            /* Sombra sutil */
             transition: all 0.2s ease-in-out;
         }
-        
+
         /* Cabeçalho do Card (Inspirado na imagem - sem fundo) */
         .card-header {
             background-color: #ffffff;
-            border-bottom: 1px solid #f0f0f0; /* Linha sutil */
+            border-bottom: 1px solid #f0f0f0;
+            /* Linha sutil */
             padding: 1.25rem 1.5rem;
         }
-        
+
         .card-body {
-             padding: 1.5rem;
+            padding: 1.5rem;
         }
 
         /* Tabela limpa (Inspirado na imagem) */
         #historicoTable thead {
-             border-bottom: 2px solid #eaedf1;
+            border-bottom: 2px solid #eaedf1;
         }
+
         #historicoTable th {
             font-weight: 600;
             color: #6b7280;
@@ -59,19 +66,22 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+
         #historicoTable tbody tr {
             cursor: pointer;
             transition: background-color 0.15s ease-in-out;
         }
+
         #historicoTable tbody tr:hover {
             background-color: #fcfdff;
         }
-        
+
         /* Botões de Ação da Tabela (Monocromáticos) */
         .action-btn-group .btn {
             color: #6b7280;
             transition: all 0.2s ease;
         }
+
         .action-btn-group .btn:hover {
             background-color: #f0f2f5;
             color: #000;
@@ -79,80 +89,119 @@
 
         /* Logs (Estilo "Dark Mode" da inspiração) */
         #logs {
-            background-color: #1f2937; /* Um preto mais suave */
-            color: #d1d5db; /* Texto cinza claro */
+            background-color: #1f2937;
+            /* Um preto mais suave */
+            color: #d1d5db;
+            /* Texto cinza claro */
             font-family: "Courier New", Courier, monospace;
             font-size: 0.85rem;
             height: 250px;
             overflow-y: auto;
-            border-radius: 0.5rem; /* Cantos arredondados internos */
+            border-radius: 0.5rem;
+
+            /* Cantos arredondados internos */
         }
-        
+
         /* Barra de Progresso (Inspirado na imagem) */
-        .progress, .progress-bar {
+        .progress,
+        .progress-bar {
             /* border-radius: 1rem; /* Cantos arredondados */
         }
+
         .progress {
             height: 25px;
             background-color: #e5e7eb;
         }
-        
+
         /* Inputs (Inspirado na imagem) */
-        .form-control, .form-select {
-            background-color: #f9fafb; /* Fundo cinza sutil */
-            border-color: #e5e7eb; /* Borda cinza sutil */
-            border-radius: 0.5rem; /* Cantos arredondados */
-        }
-        .form-control:focus, .form-select:focus {
-            background-color: #ffffff;
-            border-color: #a5b4fc; /* Realce azul/índigo */
-            box-shadow: 0 0 0 2px #c7d2fe;
+        .form-control,
+        .form-select {
+            background-color: #f9fafb;
+            /* Fundo cinza sutil */
+            border-color: #e5e7eb;
+            /* Borda cinza sutil */
+            border-radius: 0.5rem;
+            /* Cantos arredondados */
         }
 
+        .form-control:focus,
+        .form-select:focus {
+            background-color: #ffffff;
+            border-color: #a5b4fc;
+            /* Realce azul/índigo */
+            box-shadow: 0 0 0 2px #c7d2fe;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="container my-5">
-        
+
         <div class="mb-4">
             <h1 class="h2 d-inline-flex align-items-center">
                 <i class="bi bi-geo-alt-fill me-3" style="color: #4f46e5;"></i>
                 Analisador Geoespacial
             </h1>
         </div>
-        
+
         <div class="row g-4 g-xl-5">
 
             <div class="col-lg-5">
                 <div class="sticky-form-col d-grid gap-4">
-                
+
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title mb-4 fs-4"><i class="bi bi-file-earmark-arrow-up me-2 text-primary"></i> 1. Nova Análise</h5>
+                            <h5 class="card-title mb-4 fs-4"><i
+                                    class="bi bi-file-earmark-arrow-up me-2 text-primary"></i> 1. Nova Análise</h5>
                             <form id="upload-form">
                                 <div class="mb-3">
-                                    <label for="nome_projeto" class="form-label fw-bold">Nome da Análise (Projeto) <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="nome_projeto" placeholder="Ex: Análise Clientes TIM Sul" required>
+                                    <label for="nome_projeto" class="form-label fw-bold">Nome da Análise (Projeto) <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="nome_projeto"
+                                        placeholder="Ex: Análise Clientes TIM Sul" required>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="file" class="form-label fw-bold">Arquivo Excel <span class="text-danger">*</span></label>
-                                    <input type="file" class="form-control" id="file" name="file" required>
+                                    <label for="file" class="form-label fw-bold">Arquivo Excel <span
+                                            class="text-danger">*</span></label>
+                                    <input type="file" class="form-control" id="file" accept=".xlsx" name="file" required>
                                 </div>
                                 <div class="row g-2 mb-3">
                                     <div class="col-md-5">
                                         <label for="raio" class="form-label fw-bold">Raio (km)</label>
-                                        <input type="number" class="form-control" id="raio" name="raio_km" step="0.1" value="0.5">
+                                        <input type="number" class="form-control" id="raio" name="raio_km" step="0.1"
+                                            value="0.5">
                                     </div>
                                     <div class="col-md-7">
                                         <label for="coordenadas" class="form-label fw-bold">Colunas Coordenadas</label>
-                                        <input type="text" class="form-control" id="coordenadas" name="coordenadas" value="LATITUDE, LONGITUDE">
+                                        <input type="text" class="form-control" id="coordenadas" name="coordenadas"
+                                            value="LATITUDE, LONGITUDE">
                                     </div>
                                 </div>
                                 <div class="mb-4">
-                                    <label for="col_velocidade" class="form-label fw-bold">Colunas Velocidade (Opcional)</label>
-                                    <input type="text" class="form-control" id="col_velocidade" name="col_velocidade" placeholder="Ex: VELOCIDADE_MBPS">
+                                    <label for="col_velocidade" class="form-label fw-bold">Colunas Velocidade
+                                        (Opcional)</label>
+                                    <input type="text" class="form-control" id="col_velocidade" name="col_velocidade"
+                                        placeholder="Ex: VELOCIDADE_MBPS">
                                 </div>
+
+                                <div class="d-flex gap-3 mb-3">
+                                    <label class="form-label fw-bold">Opções de buscas:</label>
+                                    
+                                    <!-- Busca por GPON -->
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" checked type="checkbox" id="buscarGpon">
+                                        <label class="form-check-label" for="buscarGpon">Buscar GPON</label>
+                                    </div>
+
+                                    <!-- Busca por Cidades -->
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" checked type="checkbox" id="buscarCidades">
+                                        <label class="form-check-label" for="buscarCidades">Buscar Cidades</label>
+                                    </div>
+
+                                </div>
+                                <input type="hidden" name="type_busca" id="type_busca" value="3">
                                 <div class="d-grid">
                                     <button type="submit" class="btn btn-primary btn-lg rounded-4" id="submit-button">
                                         <i class="bi bi-play-circle me-2"></i> Iniciar Análise
@@ -161,19 +210,20 @@
                             </form>
                         </div>
                     </div>
-                    
+
                     <div class="card">
-                         <div class="card-body">
+                        <div class="card-body">
                             <h5 class="card-title mb-3 fs-5"><i class="bi bi-terminal me-2"></i> 2. Logs da Análise</h5>
                             <div id="logs" class="p-3 mb-3">
                                 <p class="text-muted">Aguardando início de uma nova análise...</p>
                             </div>
                             <div class="progress" role="progressbar">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated" id="progress-bar" style="width: 0%; font-size: 0.85rem;">0%</div>
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" id="progress-bar"
+                                    style="width: 0%; font-size: 0.85rem;">0%</div>
                             </div>
                         </div>
                     </div>
-                    
+
                 </div>
             </div>
 
@@ -181,7 +231,8 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0 fs-4"><i class="bi bi-archive me-2"></i> 3. Histórico</h5>
-                        <button class="btn btn-outline-danger btn-sm rounded-4" id="btnLimparHistorico" title="Limpar Histórico Local">
+                        <button class="btn btn-outline-danger btn-sm rounded-4" id="btnLimparHistorico"
+                            title="Limpar Histórico Local">
                             <i class="bi bi-trash me-1"></i> Limpar Tudo
                         </button>
                     </div>
@@ -197,13 +248,13 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    </tbody>
+                                </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
         </div>
     </div>
 
@@ -217,7 +268,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4" id="modalCorpo">
-                    </div>
+                </div>
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-secondary rounded-4" data-bs-dismiss="modal">Fechar</button>
                 </div>
@@ -244,8 +295,8 @@
                 danger: 'exclamation-triangle-fill',
                 warning: 'exclamation-triangle-fill',
                 info: 'info-circle-fill'
-            }[type];
-            
+            } [type];
+
             const toastHtml = `
                 <div class="toast align-items-center text-bg-${type} border-0 rounded-4" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5000">
                     <div class="d-flex">
@@ -257,12 +308,14 @@
                     </div>
                 </div>
             `;
-            
+
             const toastElement = $(toastHtml);
             $('.toast-container').append(toastElement);
             const toast = new bootstrap.Toast(toastElement[0]);
             toast.show();
-            toastElement.on('hidden.bs.toast', function () { $(this).remove(); });
+            toastElement.on('hidden.bs.toast', function () {
+                $(this).remove();
+            });
         }
 
         /**
@@ -282,7 +335,7 @@
          */
         function salvarNoHistorico(data) {
             const historico = JSON.parse(localStorage.getItem(HISTORICO_KEY)) || [];
-            
+
             const logEntry = {
                 timestamp: new Date().getTime(),
                 nome_projeto: $('#nome_projeto').val(),
@@ -307,7 +360,7 @@
 
             let historico = JSON.parse(localStorage.getItem(HISTORICO_KEY)) || [];
             const itemParaRemover = historico.find(item => item.result_id === resultId);
-            
+
             if (itemParaRemover) {
                 historico = historico.filter(item => item.result_id !== resultId);
                 localStorage.setItem(HISTORICO_KEY, JSON.stringify(historico));
@@ -326,13 +379,18 @@
             tableBody.empty();
 
             if (historico.length === 0) {
-                tableBody.append('<tr><td colspan="4" class="text-center text-muted p-4">Nenhum histórico salvo.</td></tr>');
+                tableBody.append(
+                    '<tr><td colspan="4" class="text-center text-muted p-4">Nenhum histórico salvo.</td></tr>');
                 return;
             }
 
             historico.slice().reverse().forEach(item => {
-                const dataFormatada = new Date(item.timestamp).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                
+                const dataFormatada = new Date(item.timestamp).toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+
                 const tr = `
                     <tr data-id="${item.result_id}" data-timestamp="${item.timestamp}">
                         <td class="fw-bold text-dark">${item.nome_projeto}</td>
@@ -363,18 +421,18 @@
          */
         function processEvent(data) {
             const $progressBar = $('#progress-bar');
-            
+
             if (data.status === 'error') {
                 logMessage(`<span class="text-danger">ERRO NA ANÁLISE: ${data.message}</span>`);
                 $progressBar.removeClass('bg-primary').addClass('bg-danger').css('width', '100%').text('Erro');
                 showToast(`Erro na análise: ${data.message}`, 'danger');
                 return;
             }
-            
+
             if (data.status === 'complete') {
                 logMessage(`<span class="text-success">Análise concluída com sucesso!</span>`);
                 $progressBar.removeClass('bg-primary').addClass('bg-success').css('width', '100%').text('Concluído!');
-                
+
                 salvarNoHistorico(data);
                 $('#upload-form')[0].reset(); // Limpa o formulário
 
@@ -394,12 +452,14 @@
 
             try {
                 const response = await fetch(url);
-                
+
                 if (!response.ok) {
                     try {
                         const errorData = await response.json();
                         if (errorData.detail === "Resultado não encontrado ou expirado.") {
-                            logMessage(`<span class="text-warning">Aviso: O arquivo para ${resultId} não foi encontrado no servidor. Pode ter expirado.</span>`);
+                            logMessage(
+                                `<span class="text-warning">Aviso: O arquivo para ${resultId} não foi encontrado no servidor. Pode ter expirado.</span>`
+                                );
                             showToast('Arquivo não encontrado no servidor. Pode ter expirado.', 'warning');
                         } else {
                             throw new Error(errorData.detail || response.statusText);
@@ -415,13 +475,13 @@
                 const a = document.createElement('a');
                 a.style.display = 'none';
                 a.href = downloadUrl;
-                a.download = filename || `relatorio_${resultId}.xlsx`;
+                a.download = `${filename.split('.xlsx')[0]} - resultado.xlsx` || `relatorio_${resultId}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(downloadUrl);
                 a.remove();
-                
-                showToast(`Download de "${filename}" iniciado.`, 'success');
+
+                showToast(`Download de "${filename.split('.xlsx')[0]} - resultado.xlsx" iniciado.`, 'success');
 
             } catch (error) {
                 logMessage(`<span class="text-danger">Erro no Download: ${error.message}</span>`);
@@ -435,7 +495,9 @@
          * Função para deletar o arquivo do servidor via Fetch (Single-Page).
          */
         async function fetchDelete(resultId) {
-            if (!confirm('Deseja realmente deletar este arquivo do SERVIDOR? Esta ação também o removerá do histórico local.')) {
+            if (!confirm(
+                    'Deseja realmente deletar este arquivo do SERVIDOR? Esta ação também o removerá do histórico local.'
+                    )) {
                 return;
             }
 
@@ -444,7 +506,7 @@
             button.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
 
             try {
-                const response = await fetch(url); 
+                const response = await fetch(url);
 
                 if (!response.ok) {
                     throw new Error(`Erro do servidor: ${response.status} ${response.statusText}`);
@@ -452,7 +514,10 @@
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
-                const { done, value } = await reader.read();
+                const {
+                    done,
+                    value
+                } = await reader.read();
 
                 if (done) {
                     throw new Error('Servidor não retornou dados ao deletar.');
@@ -473,12 +538,15 @@
                 const result = JSON.parse(jsonData);
 
                 if (result.status === 'success') {
-                    logMessage(`<span class="text-success">Sucesso: ${result.message} (ID: ${result.result_id})</span>`);
+                    logMessage(
+                        `<span class="text-success">Sucesso: ${result.message} (ID: ${result.result_id})</span>`
+                        );
                     showToast(result.message, 'success');
                     removerDoHistorico(result.result_id);
-                    
+
                 } else if (result.status === 'error') {
-                    logMessage(`<span class="text-warning">Aviso: ${result.message} (ID: ${result.result_id})</span>`);
+                    logMessage(
+                        `<span class="text-warning">Aviso: ${result.message} (ID: ${result.result_id})</span>`);
                     showToast(result.message, 'warning');
                     if (result.message.includes("não encontrado")) {
                         removerDoHistorico(result.result_id);
@@ -500,16 +568,37 @@
 
 
         // --- Bloco de Execução Principal (jQuery Ready) ---
-        
-        $(document).ready(function() {
-            
+
+        $(document).ready(function () {
+
             // 1. Renderiza a tabela de histórico ao carregar
             renderizarTabela();
 
             // 2. Manipulador do formulário de upload
-            $('#upload-form').on('submit', async function(e) {
+            $('#upload-form').on('submit', async function (e) {
                 e.preventDefault();
-                
+
+                let getTipoBusca = () => {
+                    const gpon = $('#buscarGpon').is(':checked');
+                    const cidades = $('#buscarCidades').is(':checked');
+
+                    if (gpon && cidades) return 3;
+                    if (gpon) return 2;
+                    if (cidades) return 1;
+
+                    return 0; // nenhum selecionado
+                }
+
+                if(getTipoBusca() === 0){
+                    e.stopPropagation();
+                    showToast('Informe Opções de Buscas', 'warning');
+
+                    return;
+                }else{
+                    $("#type_busca").val(getTipoBusca())
+                }
+
+
                 const $form = $(this);
                 const $button = $('#submit-button');
                 const $progressBar = $('#progress-bar');
@@ -523,30 +612,36 @@
 
                 // --- Reset da UI ---
                 $('#logs').empty().append('<p class="text-muted">Iniciando...</p>');
-                $button.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Processando...');
-                $progressBar.removeClass('bg-danger bg-success').addClass('bg-primary').css('width', '0%').text('0%');
+                $button.prop('disabled', true).html(
+                    '<span class="spinner-border spinner-border-sm"></span> Processando...');
+                $progressBar.removeClass('bg-danger bg-success').addClass('bg-primary').css('width',
+                    '0%').text('0%');
 
                 try {
                     logMessage("Iniciando upload e análise...");
                     const formData = new FormData(this);
-                    
+
                     const response = await fetch(`${API_BASE_URL}/analyze/`, {
                         method: 'POST',
                         body: formData,
                     });
 
                     if (!response.ok) {
-                        throw new Error(`Erro do servidor: ${response.status} ${response.statusText}`);
+                        throw new Error(
+                            `Erro do servidor: ${response.status} ${response.statusText}`);
                     }
 
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
 
                     while (true) {
-                        const { done, value } = await reader.read();
+                        const {
+                            done,
+                            value
+                        } = await reader.read();
                         if (done) {
                             logMessage("Stream de eventos finalizado.");
-                            break; 
+                            break;
                         }
 
                         const chunk = decoder.decode(value);
@@ -555,7 +650,7 @@
                         for (const eventString of events) {
                             if (eventString.startsWith('data:')) {
                                 const jsonData = eventString.substring(5).trim();
-                                if(jsonData) {
+                                if (jsonData) {
                                     try {
                                         const data = JSON.parse(jsonData);
                                         processEvent(data);
@@ -571,18 +666,19 @@
                     $progressBar.addClass('bg-danger').css('width', '100%').text('Erro');
                     showToast(`Erro crítico: ${error.message}`, 'danger');
                 } finally {
-                    $button.prop('disabled', false).html('<i class="bi bi-play-circle me-2"></i> Iniciar Análise');
+                    $button.prop('disabled', false).html(
+                        '<i class="bi bi-play-circle me-2"></i> Iniciar Análise');
                 }
             });
 
             // --- MANIPULADORES DE EVENTOS DO HISTÓRICO (Event Delegation) ---
 
             // 3. Visualizar Detalhes (no Modal)
-            $('#historicoTable').on('click', '.btn-visualizar', function() {
+            $('#historicoTable').on('click', '.btn-visualizar', function () {
                 const resultId = $(this).closest('tr').data('id');
                 const historico = JSON.parse(localStorage.getItem(HISTORICO_KEY)) || [];
                 const item = historico.find(item => item.result_id === resultId);
-                
+
                 if (item) {
                     $('#modalTitulo').text(`Detalhes: ${item.nome_projeto}`);
                     const modalBody = `
@@ -600,25 +696,26 @@
             });
 
             // 4. Download (Ação Single-Page)
-            $('#historicoTable').on('click', '.btn-download', function() {
+            $('#historicoTable').on('click', '.btn-download', function () {
                 const $row = $(this).closest('tr');
                 const resultId = $row.data('id');
-                const item = (JSON.parse(localStorage.getItem(HISTORICO_KEY)) || []).find(i => i.result_id === resultId);
+                const item = (JSON.parse(localStorage.getItem(HISTORICO_KEY)) || []).find(i => i
+                    .result_id === resultId);
                 fetchDownload(resultId, item.fileName);
             });
-            
+
             // 5. Deletar do Servidor (Ação Single-Page + Sincronização)
-            $('#historicoTable').on('click', '.btn-delete-server', function(e) {
+            $('#historicoTable').on('click', '.btn-delete-server', function (e) {
                 e.stopPropagation();
                 const resultId = $(this).closest('tr').data('id');
                 fetchDelete(resultId);
             });
-            
+
             // 6. Deletar Apenas Localmente
-            $('#historicoTable').on('click', '.btn-delete-local', function(e) {
+            $('#historicoTable').on('click', '.btn-delete-local', function (e) {
                 e.stopPropagation();
                 if (!confirm('Deseja remover este item APENAS do histórico local?')) return;
-                
+
                 const timestamp = $(this).closest('tr').data('timestamp');
                 let historico = JSON.parse(localStorage.getItem(HISTORICO_KEY)) || [];
                 historico = historico.filter(item => item.timestamp !== timestamp);
@@ -628,8 +725,10 @@
             });
 
             // 7. Limpar todo o histórico local
-            $('#btnLimparHistorico').on('click', function() {
-                if (confirm('ATENÇÃO!\nIsso apagará PERMANENTEMENTE todo o seu histórico local.\nDeseja continuar?')) {
+            $('#btnLimparHistorico').on('click', function () {
+                if (confirm(
+                        'ATENÇÃO!\nIsso apagará PERMANENTEMENTE todo o seu histórico local.\nDeseja continuar?'
+                        )) {
                     localStorage.removeItem(HISTORICO_KEY);
                     renderizarTabela();
                     showToast('Histórico local limpo.', 'info');
@@ -639,4 +738,5 @@
         });
     </script>
 </body>
+
 </html>

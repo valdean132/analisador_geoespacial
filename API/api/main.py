@@ -14,17 +14,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
+import logging
+
+from api.core.settings import EnvConfig
+from api.core.database import Database
+from api.core.excel_styler import autoajuste
+
 from .core.analysis import GeoAnalyzer
+
+
 
 # ==============================================================================
 # --- Definição das Pastas de Trabalho ---
 # ==============================================================================
-API_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(API_DIR)
-
-UPLOADS_DIR = os.path.join(PROJECT_ROOT, "uploads")
-RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
-KMZ_DIR = os.path.join(PROJECT_ROOT, "kmzs")
+UPLOADS_DIR = EnvConfig.UPLOADS_DIR
+RESULTS_DIR = EnvConfig.RESULTS_DIR
+KMZ_DIR = EnvConfig.KMZ_DIR
 
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -32,13 +37,27 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 # 2. Definir o dicionário que será populado no startup
 analysis_results: Dict[str, str] = {}
 
+
 # ==============================================================================
 # --- 3. Função de Ciclo de Vida (Lifespan) ---
 # ==============================================================================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Configuração de Logger para mensagem no terminal
+    logger = logging.getLogger("uvicorn.info")
+
+    logger.info("")
+    logger.info(f"# =============================================")
+    logger.info(f"# ")
+    logger.info(f"# Title: {EnvConfig.API_TITLE}")
+    logger.info(f"# Description: {EnvConfig.API_DESCRIPTION}")
+    logger.info(f"# Version: {EnvConfig.API_VERSION}")
+    logger.info(f"# ")
+    logger.info(f"# =============================================")
+    logger.info("")
+    
     # --- CÓDIGO A SER EXECUTADO ANTES DO SERVIDOR INICIAR ---
-    print("Servidor iniciando... Populando cache de resultados existentes...")
+    logger.info("Servidor iniciando... Populando cache de resultados existentes...")
     
     # Define o padrão de busca (ex: C:\..._geoespacial\API\results\resultado_*.xlsx)
     pattern = os.path.join(RESULTS_DIR, "resultado_*.xlsx")
@@ -57,37 +76,45 @@ async def lifespan(app: FastAPI):
             analysis_results[result_id] = full_path
             count += 1
         except Exception as e:
-            print(f"Erro ao carregar o resultado '{filename}' no cache: {e}")
+            logger.error(f"Erro ao carregar o resultado '{filename}' no cache: {e}")
             
-    print(f"Cache populado com {count} resultados anteriores.")
+    logger.info(f"Cache populado com {count} resultados anteriores.")
     
     # O 'yield' é o ponto onde a aplicação FastAPI fica "rodando"
     yield
     
     # --- CÓDIGO A SER EXECUTADO QUANDO O SERVIDOR DESLIGAR (opcional) ---
-    print("Servidor desligando...")
+    logger.warning("Servidor desligando...")
 
 
 # ==============================================================================
 # --- 4. Configuração da Aplicação ---
 # ==============================================================================
 app = FastAPI(
-    title="Analisador de Viabilidade Geoespacial API",
-    description="API para análise de viabilidade...",
-    version="2.4.0",
-    lifespan=lifespan  # <-- 4. Informa ao FastAPI para usar nossa função
+    title=EnvConfig.API_TITLE,
+    description=EnvConfig.API_DESCRIPTION,
+    version=EnvConfig.API_VERSION,
+    lifespan=lifespan
 )
 
 # --- Configuração de CORS ---
-origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=EnvConfig.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# --- Iniciando o banco de dados ---
+Database.init_pool()
+
+# --- Validando Extenções permitidas ---
+def is_allowed_extension(filename: str) -> bool:
+    if "." not in filename:
+        return False
+    ext = filename.rsplit(".", 1)[-1].lower()
+    return ext in EnvConfig.ALLOWED_EXTENSIONS
 
 # --- Endpoints da API ---
 
@@ -96,6 +123,7 @@ async def analyze_viability(
     raio_km: float = Form(0.0),
     coordenadas: str = Form(...),
     col_velocidade: str = Form('VELOCIDADE'),
+    type_busca: int = Form(3),
     file: UploadFile = File(...)
 ):
     """
@@ -106,6 +134,18 @@ async def analyze_viability(
     Retorna um stream de Server-Sent Events (SSE) com o progresso.
     O último evento conterá o resumo e o ID para download do resultado.
     """
+    
+    # Verificando se arquivo é maior que tamanho estabelecido
+    if file.size and file.size > EnvConfig.MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(413, f"Arquivo excede o limite de {EnvConfig.MAX_UPLOAD_SIZE_BYTES // 1024 // 1024}MB")
+
+    # Verificação da extensão
+    if not is_allowed_extension(file.filename):
+        allowed = ", ".join(EnvConfig.ALLOWED_EXTENSIONS)
+        raise HTTPException(
+            400,
+            detail=f"Extensão não permitida. Permitidas: {allowed}"
+        )
     
     # Salva o arquivo enviado temporariamente
     file_id = str(uuid.uuid4())
@@ -119,7 +159,8 @@ async def analyze_viability(
             arquivo_excel_path=upload_path,
             raio_km=raio_km,
             coluna_coordenadas=coordenadas,
-            coluna_velocidade=col_velocidade
+            coluna_velocidade=col_velocidade,
+            type_busca=type_busca
         )
         
         df_final, resumo = None, None
@@ -129,6 +170,7 @@ async def analyze_viability(
             if progress == -1: # Flag de erro
                 error_event = {"status": "error", "message": message}
                 yield f"data: {json.dumps(error_event)}\n\n"
+                os.remove(upload_path)
                 return
 
             event_data = {"progress": progress, "message": message}
@@ -149,6 +191,15 @@ async def analyze_viability(
             result_id = str(uuid.uuid4())
             result_path = os.path.join(RESULTS_DIR, f"resultado_{result_id}.xlsx")
             df_final.to_excel(result_path, index=False, engine='openpyxl')
+            analysis_results[result_id] = result_path
+
+            
+            # Aplicando Cores
+            df_final.to_excel(result_path, index=False, engine='openpyxl')
+
+            # Aplicar cores no arquivo Excel
+            autoajuste(result_path)
+
             analysis_results[result_id] = result_path
             
             # Envia o evento final com o resumo e o ID de download

@@ -7,10 +7,19 @@ import fiona
 import time
 
 class GeoAnalyzer:
-    def __init__(self, pasta_kmz: str, arquivo_excel_path: str, raio_km: float, coluna_coordenadas: str, coluna_velocidade):
+    def __init__(
+        self, 
+        pasta_kmz: str, 
+        arquivo_excel_path: str, 
+        raio_km: float, 
+        coluna_coordenadas: str, 
+        coluna_velocidade, 
+        type_busca: int
+    ):
         self.pasta_kmz = pasta_kmz
         self.arquivo_excel_path = arquivo_excel_path
         self.raio_km = raio_km
+        self.type_busca = type_busca
         self.RAIO_PROXIMIDADE_METROS = float(raio_km) * 1000
 
         # --- ATRIBUTOS DE RESULTADO ---
@@ -42,6 +51,7 @@ class GeoAnalyzer:
         atualizações de progresso.
         """
         try:
+            yield 1, f"Tipo de busca: {self.type_busca}"
             # --- Etapa 1: Carregar polígonos ---
             yield 5, "Carregando arquivos KMZ..."
             arquivos_kmz = [os.path.join(self.pasta_kmz, f) for f in os.listdir(self.pasta_kmz) if f.lower().endswith('.kmz')]
@@ -54,7 +64,7 @@ class GeoAnalyzer:
                 # Usando um método auxiliar para manter o código limpo
                 gdf_poligonos = self._extrair_poligonos(kmz_file_path)
                 if gdf_poligonos is not None:
-                    gdf_poligonos['Mancha'] = os.path.basename(kmz_file_path).split('.')[0]
+                    gdf_poligonos['Mancha GPON'] = os.path.basename(kmz_file_path).split('.')[0]
                     lista_poligonos_gdfs.append(gdf_poligonos)
                 yield 10 + int(20 * (i + 1) / len(arquivos_kmz)), f"Processando KMZ {i + 1}/{len(arquivos_kmz)}"
 
@@ -63,11 +73,6 @@ class GeoAnalyzer:
                 raise ValueError("Nenhum polígono válido foi carregado dos arquivos KMZ.")
             
             gdf_manchas_global = gpd.GeoDataFrame(pd.concat(lista_poligonos_gdfs, ignore_index=True), crs=self.CRS_GEOGRAFICO)
-            if self.COLUNA_NOME_MANCHA not in gdf_manchas_global.columns:
-                gdf_manchas_global[self.COLUNA_NOME_MANCHA] = 'Nome não encontrado'
-            else:
-                # gdf_manchas_global[self.COLUNA_NOME_MANCHA].fillna('Nome não encontrado', inplace=True)
-                gdf_manchas_global[self.COLUNA_NOME_MANCHA] = gdf_manchas_global[self.COLUNA_NOME_MANCHA].fillna('Nome não encontrado')
             
             # --- Etapa 2 & 3: Carregar e processar pontos ---
             yield 35, "Lendo e validando arquivo de pontos..."
@@ -105,32 +110,38 @@ class GeoAnalyzer:
                         # ... cálculo de distância ...
                         nearest_polygons = gdf_manchas_proj.loc[gdf_proximos_bruto['index_right'], 'geometry']
                         aligned_polygons = gpd.GeoSeries(nearest_polygons.values, index=gdf_proximos_bruto.index, crs=self.CRS_PROJETADO)
-                        gdf_proximos_bruto['Distância (metros)'] = gdf_proximos_bruto.geometry.distance(aligned_polygons)
+                        gdf_proximos_bruto['Dist. GPON (mts)'] = gdf_proximos_bruto.geometry.distance(aligned_polygons)
                         gdf_proximos_agregado = self._aggregate_results(gdf_proximos_bruto, 'proximo', gdf_pontos)
 
-                resultados_geo = pd.concat([gdf_dentro_agregado, gdf_proximos_agregado]).rename(columns={self.COLUNA_NOME_MANCHA: 'Nome da Mancha'})
+                # resultados_geo = pd.concat([gdf_dentro_agregado, gdf_proximos_agregado]).rename(columns={self.COLUNA_NOME_MANCHA: 'Nome da Mancha'})
+                resultados_geo = pd.concat([gdf_dentro_agregado, gdf_proximos_agregado])
             else:
                 resultados_geo = pd.DataFrame()
 
             # --- Etapa 7: Consolidar ---
             yield 95, "Montando relatório final..."
             df_final = df_pontos.merge(resultados_geo, left_index=True, right_index=True, how="left")
-            df_final.loc[invalidos_mask, 'Status Viabilidade'] = 'Coordenada Inválida'
-            df_final.fillna({'Status Viabilidade': 'Inviável'}, inplace=True)
+            df_final.loc[invalidos_mask, 'Status'] = 'Coordenada Inválida'
+            df_final.fillna({'Status': 'Inviável'}, inplace=True)
             
-            # df_final[['Mancha', 'Nome da Mancha']] = df_final[['Mancha', 'Nome da Mancha']].fillna('---')
             # Preenche 'NaN's nas colunas de Mancha, mesmo que elas não existam
-            df_final.fillna({'Mancha': '---', 'Nome da Mancha': '---'}, inplace=True)
+            df_final.fillna({'Mancha GPON': '---',}, inplace=True)
             
             df_final = df_final.drop(columns=['geometry'], errors='ignore')
             
-            resumo = df_final['Status Viabilidade'].value_counts().to_dict()
+            resumo = df_final['Status'].value_counts().to_dict()
             
-            # Antes:
-            # yield 100, "Análise Concluída!"
-            # return df_final, resumo
-        
-            # Agora fica assim:
+            # Organizando Colunas;
+            if self.type_busca == 1:
+                ordem = ['Status', 'Rede PTP']
+            elif self.type_busca == 2:
+                ordem = ['Status', 'Mancha GPON', 'Dist. GPON (mts)']
+            elif self.type_busca == 3:
+                ordem = ['Status', 'Mancha GPON', 'Dist. GPON (mts)', 'Rede PTP']
+
+            resto = [c for c in df_final.columns if c not in ordem]
+
+            df_final = df_final[resto + ordem]
 
             # Salva os resultados nos atributos da instância
             self.df_final = df_final
@@ -236,22 +247,23 @@ class GeoAnalyzer:
         if df_bruto.empty:
             return pd.DataFrame()
         if mode == 'dentro':
-            df_bruto['Status Viabilidade'] = df_bruto.apply(
+            df_bruto['Status'] = df_bruto.apply(
                 lambda row: 'Viabilidade Expressa' if gdf_pontos.loc[row.name]['velocidade_num'] <= 500 else 'Verificar PTP', axis=1)
-            df_bruto['Distância (metros)'] = 0
-            agg_rules = {'Distância (metros)': 'first'}
+            df_bruto['Dist. GPON (mts)'] = 0
+            agg_rules = {'Dist. GPON (mts)': 'first'}
         else: # modo 'proximo'
-            df_bruto['Status Viabilidade'] = 'Próximo à mancha'
-            agg_rules = {'Distância (metros)': 'min'}
+            df_bruto['Status'] = 'Próximo à mancha'
+            agg_rules = {'Dist. GPON (mts)': 'min'}
         
         agg_rules.update({
-            'Mancha': lambda x: ', '.join(x.unique()),
-            self.COLUNA_NOME_MANCHA: lambda x: ', '.join(x.unique()),
-            'Status Viabilidade': 'first'
+            'Status': 'first',
+            'Mancha GPON': lambda x: ', '.join(x.unique()),
+            # self.COLUNA_NOME_MANCHA: lambda x: ', '.join(x.unique()), #! Apagar após todos os testes serem concluídos
         })
         
         df_agregado = df_bruto.groupby(df_bruto.index).agg(agg_rules)
-        if 'Distância (metros)' in df_agregado.columns:
-            df_agregado['Distância (metros)'] = round(df_agregado['Distância (metros)'], 2)
+        
+        if 'Dist. GPON (mts)' in df_agregado.columns:
+            df_agregado['Dist. GPON (mts)'] = round(df_agregado['Dist. GPON (mts)'], 2)
             
         return df_agregado

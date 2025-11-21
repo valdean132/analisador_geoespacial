@@ -38,7 +38,7 @@ echo Pressione CTRL+C nesta janela para parar o servidor.
 echo.
 
 REM Inicia o servidor Uvicorn escutando em todas as interfaces de rede
-uvicorn api.main:app --host 0.0.0.0 --port 8000
+uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
 :eof
 echo Servidor finalizado.

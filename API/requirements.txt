@@ -6,3 +6,5 @@ geopandas
 openpyxl
 Fiona
 Shapely
+python-dotenv
+mysql-connector-python
