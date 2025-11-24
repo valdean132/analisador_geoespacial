@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisador Geoespacial - PTP Admin</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --background-light: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-dark: #343a40;
+            --text-muted: #8692a6;
+            --border-color: #e9ecef;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-light);
+            color: var(--text-dark);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            height: 100vh;
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: white;
+            border-right: 1px solid var(--border-color);
+            padding-top: 20px;
+            z-index: 1000;
+        }
+
+        .sidebar-brand {
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 0 20px 20px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            padding: 12px 20px;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            color: var(--primary-color);
+            background-color: #f8f9fa;
+            border-left-color: var(--primary-color);
+        }
+
+        .nav-link i {
+            margin-right: 10px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 250px;
+            padding: 30px;
+        }
+
+        /* Cards */
+        .card-custom {
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            background-color: var(--card-bg);
+            margin-bottom: 20px;
+        }
+
+        .card-header-custom {
+            background-color: transparent;
+            border-bottom: 1px solid var(--border-color);
+            padding: 20px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .form-control,
+        .form-select {
+            background-color: #f8f9fa;
+            border: 1px solid var(--border-color);
+            padding: 10px 15px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border: none;
+            padding: 10px 20px;
+            font-weight: 500;
+        }
+
+        /* Table */
+        .table th {
+            font-weight: 600;
+            color: var(--text-muted);
+            border-bottom-width: 1px;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+
+        .table td {
+            vertical-align: middle;
+        }
+
+        /* Loading Overlay */
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Autocomplete List */
+        #sugestoesCidade {
+            position: absolute;
+            z-index: 1055;
+            /* Acima do modal */
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #sugestoesCidade li {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        #sugestoesCidade li:hover {
+            background-color: #f8f9fa;
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <i class="bi bi-geo-alt-fill"></i> Analisador Geo
+        </div>
+        <nav class="nav flex-column">
+            <a class="nav-link active" onclick="switchTab('find')">
+                <i class="bi bi-search"></i> Buscar Viabilidade
+            </a>
+            <a class="nav-link" onclick="switchTab('list')">
+                <i class="bi bi-list-ul"></i> Lista de Redes
+            </a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+
+        <div id="tab-find">
+            <h4 class="mb-4">Nova Análise de Ponto</h4>
+
+            <div class="card card-custom">
+                <div class="card-header-custom">
+                    <span>Parâmetros da Busca</span>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Latitude</label>
+                            <input type="number" class="form-control" id="findLat" step="any" value="-30.0346">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Longitude</label>
+                            <input type="number" class="form-control" id="findLon" step="any" value="-51.2177">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-muted">Raio (km)</label>
+                            <input type="number" class="form-control" id="findRaio" value="50">
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" onclick="buscarPTP()">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="findResult" class="card card-custom d-none">
+                <div class="card-header-custom">
+                    <span class="text-success"><i class="bi bi-check-circle me-2"></i>Resultado Encontrado</span>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info d-flex align-items-center mb-0">
+                        <i class="bi bi-info-circle-fill me-3 fs-4"></i>
+                        <div>
+                            <strong>Redes Próximas:</strong> <span id="resRedes" class="fs-5 ms-2"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="findError" class="alert alert-warning d-none mt-3">Nenhuma rede encontrada neste raio.</div>
+        </div>
+
+        <div id="tab-list" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4>Gerenciamento de Redes</h4>
+                <button class="btn btn-primary" onclick="abrirModalAdicionar()">
+                    <i class="bi bi-plus-lg me-2"></i> Adicionar Nova
+                </button>
+            </div>
+
+            <div class="card card-custom">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">Rede PTP</th>
+                                <th>Cidade/UF</th>
+                                <th>Latitude</th>
+                                <th>Longitude</th>
+                                <th class="text-end pe-4">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer bg-white border-top-0 py-3">
+                    <nav class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small" id="pageInfo">Mostrando 0 de 0</span>
+
+                        <ul class="pagination pagination-sm mb-0" id="paginationList">
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="modal fade" id="modalPTP" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Gerenciar Rede</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="ptpId">
+                    <input type="hidden" id="codigoIbge">
+                    <input type="hidden" id="codigoUF">
+                    <div class="mb-3">
+                        <label class="form-label">Nome da Rede PTP</label>
+                        <input type="text" class="form-control" id="ptpNome" placeholder="Ex: ALGAR TELECOM">
+                    </div>
+
+                    <div class="mb-3 position-relative">
+                        <label class="form-label">Cidade (Busca)</label>
+                        <input type="text" class="form-control" id="ptpCidadeBusca" placeholder="Digite para buscar..."
+                            autocomplete="off">
+                        <ul id="sugestoesCidade" style="display:none;"></ul>
+                    </div>
+
+                    <div class="alert alert-danger d-none" id="modalError"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarPTP()">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000"; // Ajuste sua porta
+        let currentPage = 1;
+        let totalPages = 1;
+        let currentMode = 'add';
+        let modalInstance;
+
+        $(document).ready(function () {
+            modalInstance = new bootstrap.Modal(document.getElementById('modalPTP'));
+
+            // Listener para o Autocomplete
+            $('#ptpCidadeBusca').on('input', function () {
+                const termo = $(this).val();
+                if (termo.length < 3) {
+                    $('#sugestoesCidade').hide();
+                    return;
+                }
+                buscarCidades(termo);
+            });
+        });
+
+        // --- Navegação ---
+        function switchTab(tab) {
+            $('.nav-link').removeClass('active');
+            // Seleciona o link clicado (gambiarra funcional para onclick inline)
+            event.currentTarget.classList.add('active');
+
+            if (tab === 'find') {
+                $('#tab-find').removeClass('d-none');
+                $('#tab-list').addClass('d-none');
+            } else {
+                $('#tab-find').addClass('d-none');
+                $('#tab-list').removeClass('d-none');
+                carregarLista();
+            }
+        }
+
+        // --- Busca Cidades (Autocomplete) ---
+        async function buscarCidades(termo) {
+            try {
+                const res = await $.get(`${API_URL}/ptp/municipios/search`, {
+                    q: termo
+                });
+                if (res.ok && res.data.length > 0) {
+                    let html = '';
+                    res.data.forEach(cidade => {
+                        html +=
+                            `<li onclick="selecionarCidade(${cidade.codigo_ibge}, ${cidade.codigo_uf}, '${cidade.nome} / ${cidade.uf}')">${cidade.nome} / ${cidade.uf}</li>`;
+                    });
+                    $('#sugestoesCidade').html(html).show();
+                } else {
+                    $('#sugestoesCidade').hide();
+                }
+            } catch (e) {
+                console.error("Erro busca cidade", e);
+            }
+        }
+
+        function selecionarCidade(ibge, uf, nome) {
+            $('#codigoIbge').val(ibge);
+            $('#codigoUF').val(uf);
+            $('#ptpCidadeBusca').val(nome);
+            $('#sugestoesCidade').hide();
+        }
+
+        // --- Buscar Viabilidade ---
+        async function buscarPTP() {
+            const lat = $('#findLat').val();
+            const lon = $('#findLon').val();
+            const raio = $('#findRaio').val();
+
+            $('#loadingOverlay').css('display', 'flex');
+            $('#findResult, #findError').addClass('d-none');
+
+            try {
+                const res = await $.get(`${API_URL}/ptp/find`, {
+                    lat,
+                    lon,
+                    raio_km: raio
+                });
+                if (res.ok && res.data) {
+                    $('#resRedes').text(res.data.redes);
+                    $('#findResult').removeClass('d-none');
+                } else {
+                    $('#findError').removeClass('d-none').text("Nenhuma rede encontrada.");
+                }
+            } catch (e) {
+                $('#findError').removeClass('d-none').text("Erro de conexão.");
+            } finally {
+                $('#loadingOverlay').hide();
+            }
+        }
+
+        // --- Lista Paginada ---
+        async function carregarLista(page = 1) {
+            $('#loadingOverlay').css('display', 'flex');
+            try {
+                const res = await $.get(`${API_URL}/ptp/list`, { page, limit: 15 });
+                if (res.ok) {
+                    renderTable(res.data.data);
+                    currentPage = res.data.page;
+                    totalPages = res.data.pages;
+                    
+                    $('#pageInfo').text(`Página ${currentPage} de ${totalPages} (Total: ${res.data.total})`);
+                    
+                    // --- AQUI ESTÁ A CORREÇÃO: CHAMA A FUNÇÃO DE DESENHAR PAGINAÇÃO ---
+                    renderPagination(currentPage, totalPages);
+                }
+            } catch (e) { 
+                console.error(e); 
+            } finally { 
+                $('#loadingOverlay').hide(); 
+            }
+        }
+
+        // --- Nova Função para Gerar os Botões ---
+        function renderPagination(current, total) {
+            const $ul = $('#paginationList');
+            $ul.empty(); // Limpa a paginação antiga
+
+            // Botão Anterior
+            const prevClass = current === 1 ? 'disabled' : '';
+            $ul.append(`
+                <li class="page-item ${prevClass}">
+                    <button class="page-link" onclick="carregarLista(${current - 1})">Anterior</button>
+                </li>
+            `);
+
+            // Lógica para mostrar janela de páginas (Ex: 1, 2, [3], 4, 5)
+            // Mostra até 5 páginas para não quebrar o layout se tiver 100 páginas
+            let startPage = Math.max(1, current - 2);
+            let endPage = Math.min(total, startPage + 4);
+            
+            // Ajusta o inicio se estivermos perto do fim
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const activeClass = i === current ? 'active' : '';
+                $ul.append(`
+                    <li class="page-item ${activeClass}">
+                        <button class="page-link" onclick="carregarLista(${i})">${i}</button>
+                    </li>
+                `);
+            }
+
+            // Botão Próximo
+            const nextClass = current === total ? 'disabled' : '';
+            $ul.append(`
+                <li class="page-item ${nextClass}">
+                    <button class="page-link" onclick="carregarLista(${current + 1})">Próximo</button>
+                </li>
+            `);
+        }
+
+        function renderTable(rows) {
+            const tbody = $('#tableBody');
+            tbody.empty();
+
+            if (!rows || rows.length === 0) {
+                tbody.append(
+                    '<tr><td colspan="5" class="text-center py-4 text-muted">Nenhum registro encontrado.</td></tr>');
+                return;
+            }
+
+            rows.forEach(row => {
+                // Escape para evitar quebra no HTML do onclick
+                const rowJson = JSON.stringify(row).replace(/"/g, '&quot;');
+
+                const tr = `
+                    <tr>
+                        <td class="ps-4 fw-bold text-primary">${row.redes || row.rede_ptp}</td>
+                        <td>${row.cidade} / ${row.uf}</td>
+                        <td>${row.lat || row.latitude}</td>
+                        <td>${row.lon || row.longitude}</td>
+                        <td class="text-end pe-4">
+                            <button class="btn btn-sm btn-light text-primary me-1" onclick="abrirModalEditar(${rowJson})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-light text-danger" onclick="deletarPTP(${row.id})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(tr);
+            });
+        }
+
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage > 0 && newPage <= totalPages) carregarLista(newPage);
+        }
+
+        // --- Modais ---
+        function abrirModalAdicionar() {
+            currentMode = 'add';
+            $('#modalTitle').text('Adicionar Nova Rede');
+            $('#modalError').addClass('d-none');
+
+            // Limpa tudo
+            $('#ptpId').val('');
+            $('#ptpNome').val('');
+            $('#ptpCidadeBusca').val('').prop('disabled', false);
+            $('#codigoIbge').val('');
+            $('#sugestoesCidade').hide();
+
+            modalInstance.show();
+        }
+
+        function abrirModalEditar(row) {
+            currentMode = 'edit';
+            $('#modalTitle').text('Editar Rede');
+            $('#modalError').addClass('d-none');
+
+            $('#ptpId').val(row.id);
+            $('#ptpNome').val(row.redes || row.rede_ptp);
+            console.debug(row)
+            // No edit, bloqueamos a cidade para simplificar (exigiria buscar o nome pelo ID se mudasse)
+            $('#ptpCidadeBusca').val(`${row.cidade}`).prop('disabled', true);
+            $('#codigoIbge').val(''); // Não usado no update simples
+
+            modalInstance.show();
+        }
+
+        // --- Salvar ---
+        async function salvarPTP() {
+            const nome = $('#ptpNome').val();
+            const ibge = $('#codigoIbge').val();
+            const uf = $('#codigoUF').val();
+            const id = $('#ptpId').val();
+
+            if (!nome) {
+                alert("Nome obrigatório");
+                return;
+            }
+            if (currentMode === 'add' && !ibge) {
+                alert("Selecione uma cidade");
+                return;
+            }
+
+            const endpoint = currentMode === 'add' ? '/ptp/create' : '/ptp/update';
+            const payload = currentMode === 'add' ?
+                {
+                    rede_ptp: nome,
+                    codigo_ibge: parseInt(ibge),
+                    codigo_uf: parseInt(uf)
+                } :
+                {
+                    id: parseInt(id),
+                    rede_ptp: nome
+                };
+
+            console.debug(payload)
+
+            try {
+                const res = await fetch(`${API_URL}${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+
+                if (json.ok) {
+                    modalInstance.hide();
+                    carregarLista(currentPage);
+                    // Feedback
+                    if (currentMode === 'add') alert("Rede adicionada com sucesso!");
+                } else {
+                    $('#modalError').text(json.error).removeClass('d-none');
+                }
+            } catch (e) {
+                $('#modalError').text("Erro de conexão.").removeClass('d-none');
+            }
+        }
+
+        async function deletarPTP(id) {
+            if (!confirm("Excluir definitivamente?")) return;
+            try {
+                const res = await fetch(`${API_URL}/ptp/delete?id=${id}`, {
+                    method: 'POST'
+                });
+                carregarLista(currentPage);
+            } catch (e) {
+                alert('Erro ao deletar');
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -9,18 +9,22 @@ from typing import Dict
 from contextlib import asynccontextmanager  # <-- 1. Importar
 import glob  # <-- 1. Importar
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 import logging
 
+from api.schemas.models import PTPCreate, PTPUpdate
+
 from api.core.settings import EnvConfig
 from api.core.database import Database
 from api.core.excel_styler import autoajuste
 
-from .core.analysis import GeoAnalyzer
+from api.core.analysis import GeoAnalyzer
+from api.core.models.ptp_model import PTPModel
+
 
 
 
@@ -51,6 +55,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"# ")
     logger.info(f"# Title: {EnvConfig.API_TITLE}")
     logger.info(f"# Description: {EnvConfig.API_DESCRIPTION}")
+    logger.info(f"# Porta: {EnvConfig.API_PORT}")
     logger.info(f"# Version: {EnvConfig.API_VERSION}")
     logger.info(f"# ")
     logger.info(f"# =============================================")
@@ -262,4 +267,61 @@ async def delete_result(result_id: str):
         
     return StreamingResponse(event_delete(), media_type="text/event-stream")
     
+
+@app.get("/ptp/find")
+async def find_ptp(lat: float = Query(...), lon: float = Query(...), raio_km: float = Query(50.0)):
+    """
+    Busca a rede PTP mais próxima (retorna null se nada)
+    GET /ptp/find?lat=...&lon=...&raio_km=50
+    """
+    try:
+        row = PTPModel.rede_ptp(lat, lon, raio_km=raio_km)
+        return {"ok": True, "data": row}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.get("/ptp/list")
+async def list_ptp(page: int = Query(1), limit: int = Query(50)):
+    try:
+        data = PTPModel.listar_paginado(page=page, limit=limit)
+        return {"ok": True, "data": data}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
     
+
+
+   
+@app.get("/ptp/municipios/search")
+async def search_municipios(q: str = Query(..., min_length=3)):
+    try:
+        cidades = PTPModel.buscar_cidades(q)
+        return {"ok": True, "data": cidades}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.post("/ptp/create")
+async def create_ptp(ptp: PTPCreate):
+    try:
+        PTPModel.criar(ptp.rede_ptp, ptp.codigo_ibge, ptp.codigo_uf)
+        return {"ok": True, "msg": "Rede adicionada à cidade com sucesso!"}
+    except ValueError as ve:
+        return {"ok": False, "error": str(ve)} # Erro de duplicidade
+    except Exception as e:
+        return {"ok": False, "error": f"Erro interno: {str(e)}"}
+
+@app.post("/ptp/update")
+async def update_ptp(ptp: PTPUpdate):
+    try:
+        PTPModel.atualizar(ptp.id, ptp.rede_ptp)
+        return {"ok": True, "msg": "Atualizado com sucesso"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.post("/ptp/delete")
+async def delete_ptp(id: int = Query(...)):
+    try:
+        PTPModel.deletar(id)
+        return {"ok": True, "msg": "Deletado com sucesso"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
