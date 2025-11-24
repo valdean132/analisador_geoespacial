@@ -1,185 +1,192 @@
-# Analisador de Viabilidade Geoespacial - API REST
+# 🌍 Analisador de Viabilidade Geoespacial (API REST)
 
 ## 1. Visão Geral
 
-Esta API fornece uma interface RESTful para a ferramenta de análise de viabilidade geoespacial. Ela permite que sistemas externos e interfaces de usuário enviem arquivos de pontos (em formato `.xlsx`) para serem analisados em relação a um conjunto de áreas de cobertura (polígonos) definidas em arquivos `.kmz`.
+Uma solução robusta e de alto desempenho para análise de viabilidade técnica em telecomunicações. O sistema processa arquivos em massa (Excel) para verificar a cobertura baseada em polígonos (KMZ) e proximidade de redes PTP armazenadas em banco de dados espacial (MySQL), com fallback inteligente e processamento paralelo.
 
-A API foi construída com **FastAPI**, garantindo alta performance, processamento assíncrono e documentação interativa automática.
+### 🚀 Funcionalidades Principais
 
-### Principais Funcionalidades
+#### 1. Motor de Análise Híbrida & Paralela
 
-- **Endpoint de Análise Assíncrono**: Inicia a análise e retorna um stream de atualizações de progresso em tempo real usando Server-Sent Events (SSE).
-- **Feedback em Tempo Real**: Permite que o cliente (frontend) exiba logs de processo e uma barra de progresso que é atualizada à medida que a análise avança.
-- **Endpoint de Download**: Fornece um endpoint seguro para baixar o arquivo Excel com os resultados após a conclusão da análise.
-- **Endpoint de Delete**: Fornece um endpoint seguro para deletar o arquivo Excel com base no id gerado após a conclusão da análise.
-- **Arquitetura Orientada a Objetos**: A lógica de negócio é encapsulada em uma classe `GeoAnalyzer`, promovendo um código limpo, modular e reutilizável.
-- **Documentação Automática**: Gera automaticamente uma documentação interativa da API (Swagger UI e ReDoc).
+O sistema opera com uma lógica de decisão inteligente e multithreading para máxima performance:
 
-## 2. Estrutura do Projeto
+- **Verificação GPON (Polígonos):** Verifica se a coordenada está DENTRO de uma mancha (arquivo KMZ).
 
-O projeto está organizado da seguinte forma para garantir a separação de responsabilidades:
+- **Verificação de Proximidade (KMZ):** Se não estiver dentro, verifica se está no raio de borda da mancha.
+
+- **Fallback PTP (Banco de Dados):** Se não houver cobertura GPON, o sistema consulta automaticamente o banco de dados MySQL (usando índices espaciais) para encontrar redes de rádio (PTP) próximas.
+
+- **Processamento Paralelo:** Utiliza `ThreadPoolExecutor` para realizar milhares de consultas espaciais simultaneamente sem travar a aplicação.
+
+#### 2. API RESTful Assíncrona
+
+- **Feedback em Tempo Real:** Endpoints utilizam Server-Sent Events (SSE) para transmitir o progresso da análise e logs para o frontend em tempo real.
+
+- **Endpoints de CRUD:** Gestão completa de redes PTP (Criar, Ler, Atualizar, Deletar) via API.
+
+- **Autocomplete:** Busca inteligente de cidades baseada na base do IBGE.
+
+- **Gestão de Arquivos:** Endpoints seguros para download e exclusão de relatórios gerados.
+
+#### 3. Frontend & Administração
+
+- **Exemplo de Integração:** Inclui `frontend_example.html` e `ptp_admin.html` demonstrando como consumir a API.
+
+- **Interface Administrativa:** Painel completo com Bootstrap 5 para gerenciar redes PTP e visualizar análises.
+
+## 🛠️ Arquitetura do Projeto
+
+A estrutura segue os padrões modernos de desenvolvimento FastAPI:
 
 ```
 analisador_geo_api/
 ├── api/
 │   ├── core/
-│   │   └── analysis.py      # A classe GeoAnalyzer com toda a lógica da análise.
+│   │   ├── analysis.py       # Motor de Análise (Pandas/GeoPandas + Threading)
+│   │   ├── database.py       # Gerenciador de Conexão MySQL (Pooling)
+│   │   ├── excel_styler.py   # Formatação automática de relatórios Excel
+│   │   ├── settings.py       # Carregamento de configurações (.env)
+│   │   └── models/
+│   │       └── ptp_model.py  # DAO (Data Access Object) para Redes e Cidades
+│   ├── migrations/           # Scripts SQL para versionamento do banco
 │   ├── schemas/
-│   │   └── models.py        # Modelos de dados Pydantic para validação e serialização.
-│   └── main.py              # Arquivo principal da API (endpoints, configuração).
+│   │   └── models.py         # Schemas Pydantic (Validação de Dados)
+│   ├── static/               # Arquivos estáticos (HTML/JS de administração)
+│   └── main.py               # Entrypoint da API (Rotas e Configuração)
 │
-├── kmzs/                    # Pasta onde os arquivos .kmz de cobertura devem ser colocados.
-│   ├── mancha_A.kmz
-│   └── mancha_B.kmz
-|
-├── results/             # Diretório para armazenar os relatórios .xlsx gerados (Criado automaticamente).
-├── uploads/             # Diretório temporário para arquivos .xlsx enviados (Criado automaticamente).
-│
-├── frontend_example.html    # Um cliente web simples para testar a API.
-├── requirements.txt         # Lista de dependências Python.
-└── README.md                # Esta documentação.
+├── kmzs/                     # Pasta para arquivos .kmz de cobertura
+├── results/                  # Armazenamento de relatórios gerados
+├── uploads/                  # Área temporária para upload
+├── requirements.txt          # Dependências do Python
+├── .env                      # Variáveis de ambiente (Configuração Sensível)
+└── start_api.bat             # Script de inicialização rápida
 ```
 
-## 3. Instalação
+## ⚙️ Instalação e Configuração
 
-**Pré-requisitos**:
-- Python 3.9 ou superior
-- Pip (gerenciador de pacotes Python)
+#### 1. Pré-requisitos
+- **Python 3.9+**
+- **Pip (gerenciador de pacotes Python)**
+- **MySQL 8.0+ (Obrigatório para suporte a funções espaciais ST_Distance_Sphere)**
 
-**Passos**:
+#### 2. Instalação
 
-1.  **Clone o repositório** (ou crie a estrutura de pastas e arquivos conforme descrito acima).
+```
+# Clone o repositório
+git clone https://github.com/valdean132/analisador_geoespacial.git
+cd analisador_geoespacial
 
-2.  **Crie e ative um ambiente virtual** (altamente recomendado):
-    ```bash
-    python -m venv .venv
-    # No Windows
-    .venv\Scripts\activate
-    # No macOS/Linux
-    source .venv/bin/activate
-    ```
+# Crie o ambiente virtual
+python -m venv .venv
 
-3.  **Instale as dependências** a partir do arquivo `requirements.txt`:
-    ```bash
-    pip install -r requirements.txt
-    ```
+# Ative o ambiente
+# Windows:
+.venv\Scripts\activate
+# Linux/Mac:
+source .venv/bin/activate
 
-4.  **Popule a pasta `kmzs/`** com todos os arquivos de mancha de cobertura `.kmz` que você usará para a análise.
+# Instale as dependências
+pip install -r requirements.txt
+```
 
-## 4. Como Executar a API
+#### 3. Configuração do Banco de Dados
 
-Com as dependências instaladas, você pode iniciar o servidor da API.
+Execute os scripts SQL na pasta `api/migrations/` na ordem para criar a estrutura do banco:
 
-1.  Navegue até o diretório raiz do projeto (`analisador_geo_api/`) no seu terminal.
+- `001_create_estados.sql`
 
-2.  Execute o servidor Uvicorn:
-    ```bash
-    uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
-    ```
-    - `api.main:app`: Indica ao Uvicorn para encontrar o objeto `app` dentro do arquivo `api/main.py`.
-    - `--host 0.0.0.0`: Indica em que host irá rodar, ex.: `http://127.0.0.1`, ideal para diferentes interfaces de saída.
-    - `--port 8000`: Indica a porta que irá rodar, ex.: `http://127.0.0.1:8000`, ideal para setar diferentes portas.
-    - `--reload`: Reinicia o servidor automaticamente sempre que você fizer alterações no código, ideal para desenvolvimento.
+- `002_create_municipios.sql`
 
-3.  O servidor estará rodando em `http://127.0.0.1:8000` como padrão caso `--host 0.0.0.0` e `--port 8000` não sejam setados.
+- `003_create_redes_ptp.sql`
 
-## 5. Endpoints da API
+#### 4. Arquivo .env
 
-A API expõe dois endpoints principais:
+Crie um arquivo `.env` na raiz baseado no `env.example`:
 
----
+``` venv
+# API
+API_TITLE="Analisador de Viabilidade Geoespacial API"
+API_VERSION="3.3.0"
+DEBUG=false
 
-### `POST /analyze/`
+# CORS (Segurança)
+CORS_ORIGINS=*,http://localhost:3000
 
-Inicia um processo de análise. Este endpoint recebe os dados como `multipart/form-data`.
+# Banco de Dados
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASS=sua_senha
+DB_NAME=analysis_db
+DB_POOL_SIZE=5        # Conexões simultâneas
+DB_POOL_RECYCLE=280   # Tempo de renovação (segundos)
 
-- **Parâmetros**:
-  - `raio_km` (float, *form-data*): O raio de proximidade em quilômetros. Padrão é `0.0`.
-  - `coordenadas` (str, *form-data*): Coluna de coordenadas a serem analisados. Padrão é `LATITUDE, LONGITUDE` ou `COORDENADAS`.
-  - `col_velocidade` (str, *form-data*): Coluna com as coordenadas em `MBPS` para analise. Pdrão é `VELOCIDADE`. Caso coluna não seja encontrada `VELOCIDADE` é difinido como `0`.
-  - `file` (file, *form-data*): O arquivo `.xlsx` contendo a lista de pontos a serem analisados.
+# Configurações de Análise
+MAX_UPLOAD_SIZE_MB=50
+ALLOWED_EXTENSIONS=xlsx
+```
 
-- **Resposta**:
-  - `200 OK`: Retorna um `StreamingResponse` com `Content-Type: text/event-stream`. Os eventos são objetos JSON com o progresso da análise.
+## ▶️ Como Executar
 
-- **Fluxo de Eventos (SSE)**:
-  - **Eventos de Progresso**:
-    ```json
-    {"progress": 25, "message": "Processando KMZ 2/5"}
-    ```
-  - **Evento de Erro**:
-    ```json
-    {"status": "error", "message": "Nenhum polígono válido foi carregado..."}
-    ```
-  - **Evento Final de Sucesso**:
-    ```json
-    {
-      "status": "complete",
-      "summary": {
-        "Viabilidade Expressa": 150,
-        "Inviável": 80,
-        "Coordenada Inválida": 5
-      },
-      "result_id": "a1b2c3d4-e5f6-..."
-    }
-    ```
+**Modo Fácil (Windows)**
 
----
+Dê um duplo clique no arquivo start_api.bat. Ele ativará o ambiente e subirá o servidor automaticamente.
 
-### `GET /download/{result_id}`
+**Modo Manual (Terminal)**
+```Bash
+uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+Após iniciar, acesse:
 
-Baixa o arquivo Excel com o resultado completo da análise.
+- **Documentação Interativa**: `http://localhost:8000/docs`
 
-- **Parâmetros**:
-  - `result_id` (string, *path*): O ID único retornado no evento final do endpoint `/analyze/`.
+- **Admin PTP:** `http://localhost:8000/static/ptp_admin.html` (se servido estaticamente) ou abra o arquivo localmente.
 
-- **Resposta**:
-  - `200 OK`: Retorna o arquivo `.xlsx` (`Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`).
-  - `404 Not Found`: Se o `result_id` for inválido ou o arquivo não existir mais.
+## 📡 Documentação da API (Endpoints)
 
----
+#### **🔍 Análise**
 
-### `GET /delete/{result_id}`
+`POST /analyze/`
+Envia um arquivo Excel para processamento. Retorna um stream de eventos (SSE).
 
-Delete o arquivo Excel com o resultado completo da análise.
+```csv
+Parâmetro      Tipo      Descrição                                 Padrão
+file           File      Arquivo .xlsx com pontos.                 -
+raio_km        Float     Raio de busca em km.                      0.0
+coordenadas    String    "Nome das colunas (ex: ""LAT, LON"")."    -
+type_busca     Int       "1=Só PTP, 2=Só GPON, 3=Híbrido."         3
+```
 
-- **Parâmetros**:
-  - `result_id` (string, *path*): O ID único retornado no evento final do endpoint `/analyze/`.
+**Resposta (Stream SSE):**
 
-- **Fluxo de Eventos (SSE)**:
-  - **Evento de Erro**:
-    ```json
-    {
-      "status": "error", 
-      "message": "Arquivo não encontrado ou já foi removido...", 
-      "result_id": "a1b2c3d4-e5f6-..."
-    }
-    ```
-  - **Evento Final de Sucesso**:
-    ```json
-    {
-      "status": "success",
-      "message": "Arquivo removido com sucesso.",
-      "result_id": "a1b2c3d4-e5f6-..."
-    }
+```json
+data: {"progress": 50, "message": "Analisando pontos DENTRO das manchas..."}
+...
+data: {"status": "complete", "summary": {...}, "result_id": "uuid..."}
+```
 
----
+#### **📂 Gestão de Arquivos**
 
-## 6. Documentação Interativa (Swagger UI)
+`GET /download/{result_id}`
+Baixa o relatório gerado.
 
-Com o servidor rodando, acesse `http://127.0.0.1:8000/docs` no seu navegador.
+`GET /delete/{result_id}`
+Remove o relatório do servidor. Retorna confirmação via SSE.
 
-Você encontrará uma interface Swagger UI completa onde pode:
-- Visualizar todos os endpoints e seus detalhes.
-- Ver os modelos de dados (schemas).
-- **Testar a API diretamente pelo navegador**, enviando arquivos e parâmetros e vendo as respostas em tempo real.
+#### **📡 Redes PTP (CRUD)**
+Endpoints para integração com o painel administrativo.
 
-## 7. Usando o Cliente de Exemplo
+- `GET /ptp/find:` Busca rede mais próxima por lat/lon.
+- `GET /ptp/list:` Lista paginada de todas as redes.
+- `GET /ptp/municipios/search:` Autocomplete de cidades.
+- `POST /ptp/create:` Cadastra nova rede vinculada a uma cidade.
+- `POST /ptp/update:` Atualiza nome da rede.
+- `POST /ptp/delete:` Remove uma rede.
 
-O arquivo `frontend_example.html` é uma página web autônoma que consome a API.
+#### **📝 Autores**
+- [Valdean P. Souza](https://www.github.com/valdean132)
+- Gilmar Batista
 
-1.  Certifique-se de que o servidor da API está rodando.
-2.  Abra o arquivo `frontend_example.html` diretamente em um navegador web (ex: Chrome, Firefox).
-3.  Use a interface para selecionar um arquivo `.xlsx`, definir o raio, definir coluna de coordenadas e coluna de velocidades.
-4.  Clique em "Iniciar Análise" para ver o progresso, os logs e o resumo serem preenchidos em tempo real.
-5.  Após a conclusão, um link para download do relatório aparecerá.
+#### **📝 Versão e licença**
+- *Versão: 3.3.0*
+- *Licença: [CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/)*

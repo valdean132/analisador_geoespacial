@@ -434,7 +434,7 @@
                 $progressBar.removeClass('bg-primary').addClass('bg-success').css('width', '100%').text('Concluído!');
 
                 salvarNoHistorico(data);
-                $('#upload-form')[0].reset(); // Limpa o formulário
+                // $('#upload-form')[0].reset(); // Limpa o formulário
 
             } else {
                 $progressBar.css('width', data.progress + '%').text(data.progress + '%');

@@ -1,4 +1,4 @@
--- migrations/001_create_municipios.sql
+-- migrations/001_create_redes_ptp.sql
 -- Recomendado MySQL 8+
 
 CREATE TABLE IF NOT EXISTS `redes_ptp` (

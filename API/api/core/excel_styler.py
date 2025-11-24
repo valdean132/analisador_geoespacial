@@ -6,7 +6,7 @@ STATUS_COLORS = {
     "Viabilidade Expressa": "90EE90",
     "Dentro": "90EE90",
     "Próximo à mancha": "ffeb9c",
-    "Próximo à mancha": "ffeb9c",
+    "Rede PTP": "ffeb9c",
     "Inviável": "FF7F7F",
     "Coordenada Inválida": "D3D3D3"
 }
@@ -15,7 +15,8 @@ STATUS_COLORS = {
 NOVAS_COLUNAS_ANALISE = [
     "Status",
     "Mancha GPON",
-    "Dist. GPON (mts)"
+    "Dist. GPON (mts)",
+    "Rede PTP"
 ]
 
 # Cor do cabeçalho para colunas novas

@@ -1,4 +1,4 @@
--- migrations/001_create_municipios.sql
+-- migrations/001_create_estados.sql
 -- Recomendado MySQL 8+
 CREATE TABLE `estados` (
   `codigo_uf` INT NOT NULL,

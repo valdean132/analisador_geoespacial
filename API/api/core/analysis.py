@@ -4,7 +4,9 @@ from shapely.geometry import Point
 import zipfile
 import os
 import fiona
-import time
+import concurrent.futures
+
+from api.core.models.ptp_model import PTPModel
 
 class GeoAnalyzer:
     def __init__(
@@ -51,7 +53,79 @@ class GeoAnalyzer:
         atualizações de progresso.
         """
         try:
+            
             yield 1, f"Tipo de busca: {self.type_busca}"
+            
+            # ============================================================
+            # TYPE_BUSCA = 1  → SOMENTE BANCO DE DADOS
+            # ============================================================
+            
+            if self.type_busca == 1:
+                yield 10, "Preparando dados para busca PTP..."
+
+                df_pontos = pd.read_excel(self.arquivo_excel_path)
+                # Inicializa colunas
+                df_pontos["Status"] = ""
+                df_pontos["Rede PTP"] = ""
+
+                modo_coordenadas = self._validar_colunas_pontos(df_pontos)
+                
+                # Função auxiliar para processar uma única linha (será executada em paralelo)
+                def processar_linha(args):
+                    index, row = args
+                    try:
+                        # Usa sua função _extrair_coord (assumindo que ela existe na classe)
+                        lat, lon = self._extrair_coord(row, modo_coordenadas)
+                        
+                        if lat is None or lon is None:
+                            return index, "Coordenada Inválida", ""
+
+                        # Chamada ao banco
+                        resultado = PTPModel.rede_ptp(lat, lon) 
+                        
+                        if resultado and resultado.get('redes'):
+                            return index, "Rede PTP", resultado['redes']
+                        else:
+                            return index, "Inviável", "---"
+                    except Exception:
+                        return index, "Coordenada Inválida", ""
+
+                # Prepara os dados para o executor (lista de tuplas)
+                linhas_para_processar = list(df_pontos.iterrows())
+                total_linhas = len(linhas_para_processar)
+                
+                yield 15, "Iniciando consultas paralelas..."
+
+                # Executa em paralelo (ajuste max_workers conforme a capacidade do seu banco)
+                # max_workers=10 ou 20 costuma ser seguro para consultas rápidas
+                with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
+                    # Submete as tarefas
+                    futures = [executor.submit(processar_linha, item) for item in linhas_para_processar]
+                    
+                    # Processa os resultados à medida que ficam prontos
+                    for i, future in enumerate(concurrent.futures.as_completed(futures)):
+                        idx, status, rede = future.result()
+                        
+                        # Atualiza o DataFrame (acesso direto pelo índice é rápido)
+                        df_pontos.at[idx, "Status"] = status
+                        df_pontos.at[idx, "Rede PTP"] = rede
+                        
+                        # Atualiza o progresso a cada X linhas para não floodar o frontend
+                        if i % 10 == 0:
+                            progresso = 15 + int(85 * (i + 1) / total_linhas)
+                            yield progresso, f"Consultando {i + 1}/{total_linhas}"
+
+                self.df_final = df_pontos
+                self.resumo = df_pontos["Status"].value_counts().to_dict()
+                
+                yield 100, "Análise concluída (modo: somente PTP)"
+                return
+            
+            
+            # ============================================================
+            # TYPE_BUSCA 2 e 3 → SEGUEM O KMZ NORMAL
+            # ============================================================
+            
             # --- Etapa 1: Carregar polígonos ---
             yield 5, "Carregando arquivos KMZ..."
             arquivos_kmz = [os.path.join(self.pasta_kmz, f) for f in os.listdir(self.pasta_kmz) if f.lower().endswith('.kmz')]
@@ -74,33 +148,50 @@ class GeoAnalyzer:
             
             gdf_manchas_global = gpd.GeoDataFrame(pd.concat(lista_poligonos_gdfs, ignore_index=True), crs=self.CRS_GEOGRAFICO)
             
+            # ============================================================
+            # ANALISAR ARQUIVO DE PONTOS
+            # ============================================================
+            
             # --- Etapa 2 & 3: Carregar e processar pontos ---
             yield 35, "Lendo e validando arquivo de pontos..."
             df_pontos = pd.read_excel(self.arquivo_excel_path)
+            
             # ... (Lógica de validação e criação de geometria idêntica à anterior) ...
             modo_coordenadas = self._validar_colunas_pontos(df_pontos)
-            df_pontos['geometry'] = df_pontos.apply(lambda row: self._criar_ponto(row, modo_coordenadas), axis=1)
+            
+            df_pontos['geometry'] = df_pontos.apply(
+                lambda row: self._criar_ponto(row, modo_coordenadas), 
+                axis=1
+            )
+            
             invalidos_mask = df_pontos['geometry'].isna()
-
+                
             # --- Etapa 4, 5, 6: Análise Espacial ---
             df_validos = df_pontos[~invalidos_mask]
+
+            # ============================================================
+            # ANÁLISE ESPACIAL (KMZ NORMAL)
+            # ============================================================
             if not df_validos.empty:
                 gdf_pontos = gpd.GeoDataFrame(df_validos, geometry='geometry', crs=self.CRS_GEOGRAFICO)
                 if self.COLUNA_VELOCIDADE in gdf_pontos.columns:
                     gdf_pontos['velocidade_num'] = pd.to_numeric(gdf_pontos[self.COLUNA_VELOCIDADE].astype(str).str.extract(r'(\d+)')[0], errors='coerce').fillna(0)
                 else:
                     gdf_pontos['velocidade_num'] = 0
-
+                
+                # Dentro da Mancha
                 yield 50, "Analisando pontos DENTRO das manchas..."
                 # ... (Lógica sjoin e agregação para 'dentro') ...
                 gdf_dentro_bruto = gpd.sjoin(gdf_pontos, gdf_manchas_global, how="inner", predicate="within")
                 gdf_dentro_agregado = self._aggregate_results(gdf_dentro_bruto, 'dentro', gdf_pontos)
 
+                # Próximo a Mancha
                 yield 70, "Analisando pontos PRÓXIMOS às manchas..."
                 # ... (Lógica sjoin_nearest e agregação para 'próximo') ...
                 indices_encontrados = gdf_dentro_agregado.index
                 gdf_pontos_fora = gdf_pontos.drop(indices_encontrados)
                 gdf_proximos_agregado = pd.DataFrame()
+                
                 if not gdf_pontos_fora.empty and self.RAIO_PROXIMIDADE_METROS > 0:
                     gdf_pontos_proj = gdf_pontos_fora.to_crs(self.CRS_PROJETADO)
                     gdf_manchas_proj = gdf_manchas_global.to_crs(self.CRS_PROJETADO)
@@ -117,15 +208,73 @@ class GeoAnalyzer:
                 resultados_geo = pd.concat([gdf_dentro_agregado, gdf_proximos_agregado])
             else:
                 resultados_geo = pd.DataFrame()
-
+            
+            # ============================================================
+            # CONSOLIDAR RESULTADOS
+            # ============================================================
+            
             # --- Etapa 7: Consolidar ---
-            yield 95, "Montando relatório final..."
+            yield 95, "Consolidando resultados GPON..."
             df_final = df_pontos.merge(resultados_geo, left_index=True, right_index=True, how="left")
             df_final.loc[invalidos_mask, 'Status'] = 'Coordenada Inválida'
             df_final.fillna({'Status': 'Inviável'}, inplace=True)
             
-            # Preenche 'NaN's nas colunas de Mancha, mesmo que elas não existam
-            df_final.fillna({'Mancha GPON': '---',}, inplace=True)
+            
+            # Preenche colunas GPON vazias
+            df_final.fillna({'Mancha GPON': '---', 'Dist. GPON (mts)': '---'}, inplace=True)
+            
+            # ============================================================
+            # TYPE_BUSCA = 3 → FAZER BUSCA PTP APENAS PARA OS INVIÁVEIS
+            # ============================================================
+            if self.type_busca == 3:
+                df_final["Rede PTP"] = "---"
+
+                # Fltrar apenas os índices que deram "Inviáveis" na busca GPON
+                indices_inviaveis = df_final[df_final['Status'] == 'Inviável'].index
+
+                total_inviaveis = len(indices_inviaveis)
+
+                if total_inviaveis > 0:
+                    yield 96, f"Buscando PTP para {total_inviaveis} pontos sem cobertura GPON..."
+                
+                    # Define a função de busca PTP (similar à do Nível 1)
+                    def buscar_ptp_fallback(idx):
+                        try:
+                            row = df_final.loc[idx]
+                            # Recria geometria se necessário ou usa lat/lon originais
+                            # Assumindo que _extrair_coord funciona com a linha do df_final
+                            lat, lon = self._extrair_coord(row, modo_coordenadas)
+                            
+                            if lat is None or lon is None:
+                                return idx, None
+
+                            resultado = PTPModel.rede_ptp(lat, lon)
+                            if resultado and resultado.get('redes'):
+                                return idx, resultado['redes']
+                            return idx, None
+                        except:
+                            return idx, None
+
+                    # Executa em paralelo apenas para os inviáveis
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
+                        futures = [executor.submit(buscar_ptp_fallback, idx) for idx in indices_inviaveis]
+                        
+                        for i, future in enumerate(concurrent.futures.as_completed(futures)):
+                            idx, rede_encontrada = future.result()
+
+                            if rede_encontrada:
+                                # Atualiza o Status e a Rede
+                                df_final.at[idx, 'Status'] = 'Rede PTP'
+                                df_final.at[idx, 'Rede PTP'] = rede_encontrada
+
+                            if i % 50 == 0:
+                                yield 96 + int(3 * (i+1)/total_inviaveis), f"Verificando PTP {i+1}/{total_inviaveis}..."
+            
+            # ============================================================
+            # FINALIZAR
+            # ============================================================
+            # --- Finalização e Organização ---
+            yield 99, "Finalizando relatório..."
             
             df_final = df_final.drop(columns=['geometry'], errors='ignore')
             
@@ -133,15 +282,15 @@ class GeoAnalyzer:
             
             # Organizando Colunas;
             if self.type_busca == 1:
-                ordem = ['Status', 'Rede PTP']
+                colunas_fixas = ['Status', 'Rede PTP']
             elif self.type_busca == 2:
-                ordem = ['Status', 'Mancha GPON', 'Dist. GPON (mts)']
+                colunas_fixas = ['Status', 'Mancha GPON', 'Dist. GPON (mts)']
             elif self.type_busca == 3:
-                ordem = ['Status', 'Mancha GPON', 'Dist. GPON (mts)', 'Rede PTP']
+                colunas_fixas = ['Status', 'Mancha GPON', 'Dist. GPON (mts)', 'Rede PTP']
 
-            resto = [c for c in df_final.columns if c not in ordem]
+            colunas_originais = [c for c in df_final.columns if c not in colunas_fixas]
 
-            df_final = df_final[resto + ordem]
+            df_final = df_final[colunas_originais + colunas_fixas]
 
             # Salva os resultados nos atributos da instância
             self.df_final = df_final
@@ -187,6 +336,18 @@ class GeoAnalyzer:
         except Exception as e:
             print(f"❌ Erro ao ler KML '{caminho_kml}': {e}")
             return None
+    
+    def _extrair_coord(self, row, mode):
+        """
+        Reusa _criar_ponto() para extrair latitude e longitude validados.
+        Retorna (lat, lon) ou (None, None).
+        """
+        ponto = self._criar_ponto(row, mode)
+        if ponto is None:
+            return None, None
+        
+        # point.x = lon, point.y = lat
+        return ponto.y, ponto.x
     
     def _criar_ponto(self, row, mode):
         """

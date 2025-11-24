@@ -289,7 +289,6 @@ async def list_ptp(page: int = Query(1), limit: int = Query(50)):
         return {"ok": False, "error": str(e)}
     
 
-
    
 @app.get("/ptp/municipios/search")
 async def search_municipios(q: str = Query(..., min_length=3)):
