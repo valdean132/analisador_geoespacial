@@ -6,7 +6,7 @@ STATUS_COLORS = {
     "Viabilidade Expressa": "90EE90",
     "Dentro": "90EE90",
     "Próximo à mancha": "ffeb9c",
-    "Rede PTP": "ffeb9c",
+    "Analisar (Rede/SW na Cidade)": "ffeb9c",
     "Inviável": "FF7F7F",
     "Coordenada Inválida": "D3D3D3"
 }

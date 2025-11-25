@@ -54,7 +54,15 @@ class GeoAnalyzer:
         """
         try:
             
-            yield 1, f"Tipo de busca: {self.type_busca}"
+            # Verificando Tipo de busca;
+            if self.type_busca == 1:
+                tipo_busca = 'Redes Na Cidade'
+            elif self.type_busca == 2:
+                tipo_busca = 'Mancha GPON'
+            elif self.type_busca == 3:
+                tipo_busca = 'Mancha GPON e Redes Na Cidade'
+            
+            yield 1, f"Tipo de busca: {tipo_busca}"
             
             # ============================================================
             # TYPE_BUSCA = 1  → SOMENTE BANCO DE DADOS
@@ -84,7 +92,7 @@ class GeoAnalyzer:
                         resultado = PTPModel.rede_ptp(lat, lon) 
                         
                         if resultado and resultado.get('redes'):
-                            return index, "Rede PTP", resultado['redes']
+                            return index, "Analisar (Rede/SW na Cidade)", resultado['redes']
                         else:
                             return index, "Inviável", "---"
                     except Exception:
@@ -264,7 +272,7 @@ class GeoAnalyzer:
 
                             if rede_encontrada:
                                 # Atualiza o Status e a Rede
-                                df_final.at[idx, 'Status'] = 'Rede PTP'
+                                df_final.at[idx, 'Status'] = 'Analisar (Rede/SW na Cidade)'
                                 df_final.at[idx, 'Rede PTP'] = rede_encontrada
 
                             if i % 50 == 0:

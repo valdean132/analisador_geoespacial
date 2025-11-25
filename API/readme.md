@@ -188,5 +188,5 @@ Endpoints para integração com o painel administrativo.
 - Gilmar Batista
 
 #### **📝 Versão e licença**
-- *Versão: 3.3.0*
+- *Versão: 3.3.2*
 - *Licença: [CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/)*
