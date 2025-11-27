@@ -7,7 +7,8 @@ STATUS_COLORS = {
     "Dentro": "90EE90",
     "Próximo à mancha": "ffeb9c",
     "Analisar (Rede/SW na Cidade)": "ffeb9c",
-    "Inviável": "FF7F7F",
+    "Verificar PTP": "ffeb9c",
+    "Rede Terceiro": "FF7F7F",
     "Coordenada Inválida": "D3D3D3"
 }
 

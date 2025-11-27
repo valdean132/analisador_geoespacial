@@ -1,0 +1,41 @@
+1. 🛡️ O Caminho da Segurança & Produção (Evoluir o Atual)
+O sistema atual está aberto. Qualquer um na rede pode usar.
+
+Desafio: Implementar Autenticação JWT (JSON Web Token).
+
+Meta: Criar login, cadastro de usuários e proteger as rotas (só admins podem deletar ou cadastrar redes, usuários comuns apenas analisam).
+
+Infra: Containerizar tudo com Docker e Docker Compose para rodar com um comando em qualquer servidor.
+
+2. 📊 O Caminho dos Dados (Dashboard Analytics)
+Já temos o histórico salvo no navegador e no banco.
+
+Desafio: Criar um Dashboard Gráfico na aba inicial.
+
+Meta: Usar Chart.js ou ApexCharts para mostrar:
+
+Gráfico de Pizza: Viável vs Inviável vs PTP.
+
+Mapa de Calor (Heatmap): Onde estão as maiores concentrações de buscas.
+
+Ranking: Quais cidades estão sendo mais consultadas.
+
+3. 🧪 O Caminho da Qualidade (Testes Automatizados)
+Fizemos muitas lógicas complexas (fallback, threads, geocálculo).
+
+Desafio: Criar uma suíte de testes com Pytest.
+
+Meta: Garantir que, se mudarmos uma vírgula na lógica de run_analysis, um teste automatizado nos avise se quebrou algo.
+
+4. 🆕 Um Novo Projeto (Reset Total)
+Quer mudar de ares?
+
+Ideias:
+
+Um bot de WhatsApp/Telegram para fazer essas consultas geoespaciais via chat?
+
+Uma automação de scraping?
+
+Algo com Inteligência Artificial (LLMs) integrado ao seu banco de dados?
+
+Estou com o terminal aberto e o café na mão. Qual é a missão de hoje?
